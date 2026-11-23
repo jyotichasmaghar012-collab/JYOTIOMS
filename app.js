@@ -10,6 +10,12 @@
  */
 const path = require('node:path');
 const fs = require('node:fs');
+
+// Load settings from .env (if present) before anything reads process.env.
+// Values already set in the real environment take precedence.
+const ENV_FILE = path.join(__dirname, '.env');
+if (fs.existsSync(ENV_FILE) && fs.statSync(ENV_FILE).isFile()) process.loadEnvFile(ENV_FILE);
+
 const express = require('express');
 const cookieSession = require('cookie-session');
 const multer = require('multer');

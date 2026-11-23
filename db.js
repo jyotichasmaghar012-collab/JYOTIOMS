@@ -6,7 +6,11 @@ const core = require('./lib/core');
 const { generate_password_hash } = core;
 
 const BASE_DIR = __dirname;
-const DB_PATH = process.env.OMS_DB_PATH || path.join(BASE_DIR, 'data', 'oms.db');
+// On Vercel the project folder is read-only; only /tmp is writable (and it is
+// NOT permanent - it is wiped whenever the serverless instance is recycled).
+const IS_VERCEL = !!process.env.VERCEL;
+const DB_PATH = process.env.OMS_DB_PATH ||
+  (IS_VERCEL ? '/tmp/oms.db' : path.join(BASE_DIR, 'data', 'oms.db'));
 const SCHEMA_PATH = path.join(BASE_DIR, 'schema.sql');
 
 /** Per-request connection (Flask: g.db), closed - and rolled back if
@@ -62,8 +66,10 @@ function _table_exists(conn, table) {
 }
 
 function init_db() {
-  fs.mkdirSync(path.join(BASE_DIR, 'data'), { recursive: true });
-  fs.mkdirSync(path.join(BASE_DIR, 'data', 'backups'), { recursive: true });
+  if (!IS_VERCEL) {
+    fs.mkdirSync(path.join(BASE_DIR, 'data'), { recursive: true });
+    fs.mkdirSync(path.join(BASE_DIR, 'data', 'backups'), { recursive: true });
+  }
   fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
   const fresh = !fs.existsSync(DB_PATH);
   withConn((conn) => {

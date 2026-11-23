@@ -6,3 +6,5 @@ data/oms.db
 data/*.pdf
 data/backups/
 data/oms_backup_*.db
+.secrets/
+!.env.example
