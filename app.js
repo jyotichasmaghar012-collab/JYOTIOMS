@@ -39,13 +39,26 @@ const mongosync = require('./lib/mongosync');
 
 // Local: migrate data/oms.db right away. MongoDB mode: first pull the saved
 // database from Atlas, migrate, and save it back; requests wait for this.
-let ready;
+let readyPromise = null;
+/** Resolves once the database is ready. A failed MongoDB startup is retried
+ *  on the next request instead of leaving the instance broken. */
+function ensureReady() {
+  if (!readyPromise) {
+    readyPromise = mongosync.startup(init_db).catch((e) => {
+      readyPromise = null;
+      const err = new Error(`${e && e.name ? e.name : 'Error'}: ${String(e && e.message ? e.message : e).split('\n')[0]}`);
+      err.code = 'OMS_DB_UNAVAILABLE';
+      console.error('MongoDB startup failed -', err.message);
+      throw err;
+    });
+  }
+  return readyPromise;
+}
 if (mongosync.enabled()) {
-  ready = mongosync.startup(init_db);
-  ready.catch((e) => console.error('MongoDB startup failed:', e && e.message ? e.message : e));
+  ensureReady().catch(() => {});
 } else {
   init_db();
-  ready = Promise.resolve();
+  readyPromise = Promise.resolve();
 }
 
 /* ------------------------------------------------------------------ */
@@ -371,7 +384,7 @@ for (const rule of ruleKeys) {
     }
     ctx.viewArgs = params;
     (async () => {
-      await ready;
+      await ensureReady();
       if (mongosync.enabled()) {
         ctx.syncTok = await mongosync.beginRequest(!['GET', 'HEAD', 'OPTIONS'].includes(method));
       }
@@ -399,6 +412,11 @@ for (const rule of ruleKeys) {
       return sendResult(res, result);
     })().catch((err) => {
       if (err && err.code === 'OMS_BUSY') return res.status(503).type('html').send(errorPage(503, err.message));
+      if (err && err.code === 'OMS_DB_UNAVAILABLE') {
+        return res.status(503).type('html').send(errorPage(503,
+          `Could not connect to the database (MongoDB Atlas). Reason: ${err.message}. ` +
+          'Check the MONGODB_URI value in Vercel (no quote marks, current password) and that Atlas Network Access allows 0.0.0.0/0.'));
+      }
       return handleError(err, res);
     });
     return undefined;
