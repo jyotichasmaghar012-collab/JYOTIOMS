@@ -361,7 +361,7 @@ bp.route('/invoices/<int:invoice_id>/pdf', login_required(async function invoice
 
   const buf = await c.save();
   // The per-invoice PDF is kept in data/ (as in the original app).
-  try { fs.writeFileSync(path.join(BASE_DIR, 'data', `invoice_${invoice.invoice_no}.pdf`), buf); } catch (_) { /* ignore */ }
+  try { fs.writeFileSync(path.join(require('../lib/storage').DATA_DIR, `invoice_${invoice.invoice_no}.pdf`), buf); } catch (_) { /* ignore */ }
   return pdfResponse(buf, `invoice_${invoice.invoice_no}.pdf`);
 }));
 

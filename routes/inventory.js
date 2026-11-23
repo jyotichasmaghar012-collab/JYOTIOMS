@@ -12,7 +12,8 @@ const { get_active_branch_id, is_all_branches_view, list_branches, get_branch_na
 const CATALOG_PAGE_SIZE = 20;
 const bp = new Blueprint('inventory', { url_prefix: '/inventory' });
 
-const PRODUCT_UPLOAD_DIR = path.join(BASE_DIR, 'static', 'uploads', 'products');
+const { UPLOAD_STATIC } = require('../lib/storage');
+const PRODUCT_UPLOAD_DIR = path.join(UPLOAD_STATIC, 'uploads', 'products');
 const ALLOWED_IMAGE_EXT = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif']);
 
 // Product image gallery (shared by Frames and Contact Lenses).

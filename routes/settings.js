@@ -12,9 +12,10 @@ const { list_branches } = require('../branches');
 
 const bp = new Blueprint('settings', { url_prefix: '/settings' });
 
-const BANNER_UPLOAD_DIR = path.join(BASE_DIR, 'static', 'uploads', 'banner');
+const { UPLOAD_STATIC, DATA_DIR } = require('../lib/storage');
+const BANNER_UPLOAD_DIR = path.join(UPLOAD_STATIC, 'uploads', 'banner');
 const ALLOWED_BANNER_EXT = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif']);
-const LOGO_UPLOAD_DIR = path.join(BASE_DIR, 'static', 'uploads', 'logo');
+const LOGO_UPLOAD_DIR = path.join(UPLOAD_STATIC, 'uploads', 'logo');
 const ALLOWED_LOGO_EXT = new Set(['png', 'jpg', 'jpeg', 'webp', 'svg']);
 
 /** Save the storefront ad/banner image as static/uploads/banner/banner.<ext>. */
@@ -213,8 +214,30 @@ bp.route('/my-password', ['GET', 'POST'], login_required(function my_password() 
   return render_template('settings/my_password.html');
 }));
 
-bp.route('/store-analytics', permission_required('shop_setting')(function store_analytics() {
+bp.route('/store-analytics', permission_required('shop_setting')(async function store_analytics() {
   const db = get_db();
+  const mongosync = require('../lib/mongosync');
+  if (mongosync.enabled()) {
+    // MongoDB mode: storefront visits are stored in MongoDB, not SQLite.
+    let page = parseInt(request.args.get('page', 1), 10);
+    if (Number.isNaN(page)) page = 1;
+    const s = await mongosync.visitStats({ page, perPage: 20 });
+    // Attach customer names for logged-in visitors.
+    const ocIds = [...new Set(s.recent.map((v) => v.online_customer_id).filter((x) => x !== null && x !== undefined))];
+    const names = {};
+    if (ocIds.length) {
+      for (const r of db.execute(`SELECT oc.id, c.name FROM online_customers oc JOIN customers c ON c.id = oc.customer_id
+               WHERE oc.id IN (${ocIds.map(() => '?').join(',')})`, ocIds).fetchall()) names[r.id] = r.name;
+    }
+    const recent_visits = s.recent.map((v) => ({ ...v, customer_name: names[v.online_customer_id] || null }));
+    return render_template('settings/store_analytics.html', {
+      total_visits: s.total, unique_visitors: s.unique, today_visits: s.today, week_visits: s.week,
+      registered_customers: db.execute('SELECT COUNT(*) c FROM online_customers').fetchone().c,
+      popular_pages: s.popular, recent_visits,
+      visits_page: s.page, visits_total_pages: s.totalPages, visits_total: s.total,
+      visits_page_url: (p) => url_for('settings.store_analytics', { page: p }),
+    });
+  }
   const c = (sql) => db.execute(sql).fetchone().c;
   const total_visits = c('SELECT COUNT(*) c FROM site_visits');
   const unique_visitors = c('SELECT COUNT(DISTINCT ip_address) c FROM site_visits WHERE ip_address IS NOT NULL');
@@ -239,7 +262,7 @@ bp.route('/store-analytics', permission_required('shop_setting')(function store_
 }));
 
 bp.route('/backup', permission_required('backup')(function backup_page() {
-  const backups_dir = path.join(BASE_DIR, 'data', 'backups');
+  const backups_dir = path.join(DATA_DIR, 'backups');
   let files = [];
   if (fs.existsSync(backups_dir) && fs.statSync(backups_dir).isDirectory()) {
     files = fs.readdirSync(backups_dir).sort().reverse();
@@ -250,7 +273,7 @@ bp.route('/backup', permission_required('backup')(function backup_page() {
 bp.route('/backup/download', permission_required('backup')(function backup_download() {
   get_db().commit(); // flush any pending writes before copying the file
   const ts = strftime(new Date(), '%Y%m%d_%H%M%S');
-  const tmp_path = path.join(BASE_DIR, 'data', `oms_backup_${ts}.db`);
+  const tmp_path = path.join(DATA_DIR, `oms_backup_${ts}.db`);
   fs.copyFileSync(DB_PATH, tmp_path);
   return send_file(tmp_path, { as_attachment: true, download_name: `optical_oms_backup_${ts}.db` });
 }));

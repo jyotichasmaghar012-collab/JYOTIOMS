@@ -19,6 +19,7 @@ const { validate_coupon, record_coupon_usage } = require('./coupons');
 const membership = require('./membership');
 const reviews = require('./reviews');
 const { create_notification } = require('./alerts');
+const mongosync = require('../lib/mongosync');
 
 const bp = new Blueprint('store', { url_prefix: '/store' });
 
@@ -80,11 +81,25 @@ bp.before_request(function _check_store_enabled() {
 });
 
 /** Built-in analytics: one site_visits row per storefront request. Best-effort. */
-bp.before_request(function _log_site_visit() {
+bp.before_request(async function _log_site_visit() {
+  const forwarded = request.headers.get('X-Forwarded-For', '');
+  const ip = forwarded ? forwarded.split(',')[0].trim() : request.remote_addr;
+  if (mongosync.enabled()) {
+    // MongoDB mode: one small document per visit instead of re-saving the DB.
+    try {
+      const d = new Date();
+      const p2 = (n) => String(n).padStart(2, '0');
+      await mongosync.logVisit({
+        path: request.path, ip_address: ip,
+        user_agent: String(request.headers.get('User-Agent', '') || '').slice(0, 255),
+        referrer: request.referrer, online_customer_id: session.get('online_customer_id') ?? null,
+        visited_at: `${d.getUTCFullYear()}-${p2(d.getUTCMonth() + 1)}-${p2(d.getUTCDate())} ${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())}:${p2(d.getUTCSeconds())}`,
+      });
+    } catch (_) { /* best-effort */ }
+    return undefined;
+  }
   try {
     const db = get_db();
-    const forwarded = request.headers.get('X-Forwarded-For', '');
-    const ip = forwarded ? forwarded.split(',')[0].trim() : request.remote_addr;
     db.execute(`INSERT INTO site_visits (path, ip_address, user_agent, referrer, online_customer_id)
                VALUES (?,?,?,?,?)`, [request.path, ip, String(request.headers.get('User-Agent', '') || '').slice(0, 255),
       request.referrer, session.get('online_customer_id')]);

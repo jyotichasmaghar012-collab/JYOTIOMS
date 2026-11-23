@@ -33,6 +33,27 @@ The database schema is unchanged, and password hashes use the same werkzeug form
 3. Copy its `static/uploads/` into `node-app/static/uploads/`.
 4. Start the Node app. Pending column migrations run automatically on startup, as they did in Python.
 
+## Hosting on Vercel (data saved in MongoDB Atlas)
+
+Vercel's file system is temporary, so on Vercel the app keeps its permanent copy in MongoDB Atlas (`lib/mongosync.js`):
+
+- The SQLite database is stored in MongoDB (GridFS). Each request first fetches the latest copy if another instance saved a newer one. Saves happen before the response is sent, and write requests take a lock so simultaneous saves are applied one after another.
+- Newly uploaded images (products, brands, banners, reviews) are stored in MongoDB and served from there.
+- Storefront visit analytics go to the `site_visits` collection.
+
+Set these in Vercel → Settings → Environment Variables:
+
+| Variable | Value |
+|---|---|
+| `MONGODB_URI` | `mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/jyotioms?retryWrites=true&w=majority` |
+| `OMS_SECRET_KEY` | a long random string (copy from your `.env`) |
+
+In Atlas, Network Access must allow `0.0.0.0/0`, because Vercel's IP addresses change.
+
+To use MongoDB storage on your own computer too, add `OMS_STORAGE=mongodb` to `.env`. Without it, the app uses `data/oms.db` as before. Run `node scripts/check-mongo.js` to test the connection.
+
+Because every save re-uploads the whole database file, this suits a single shop's traffic. It isn't meant for a high-volume site.
+
 ## Daily backup
 
 ```bash

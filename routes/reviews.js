@@ -22,7 +22,9 @@ const { admin_required } = require('../auth');
 
 const bp = new Blueprint('reviews', { url_prefix: '/website/reviews' });
 
-const REVIEW_UPLOAD_DIR = path.join(BASE_DIR, 'static', 'uploads', 'reviews');
+const { UPLOAD_STATIC } = require('../lib/storage');
+const { deleteStatic } = require('../lib/uploads');
+const REVIEW_UPLOAD_DIR = path.join(UPLOAD_STATIC, 'uploads', 'reviews');
 const ALLOWED_IMAGE_EXT = new Set(['png', 'jpg', 'jpeg', 'webp']);
 const ALLOWED_VIDEO_EXT = new Set(['mp4', 'webm', 'mov']);
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -128,10 +130,9 @@ function save_review_file(fileStorage, kind) {
 
 function _delete_media_file(rel) {
   if (!rel) return;
-  const abs = path.resolve(BASE_DIR, 'static', rel);
-  try {
-    if (abs.startsWith(path.resolve(REVIEW_UPLOAD_DIR) + path.sep) && fs.existsSync(abs)) fs.unlinkSync(abs);
-  } catch (_) { /* ignore */ }
+  // Only ever delete inside uploads/reviews/.
+  const norm = path.posix.normalize(String(rel).split('\\').join('/'));
+  if (norm.startsWith('uploads/reviews/') && !norm.includes('..')) deleteStatic(norm);
 }
 
 /* ==================== Admin: Review Moderation ==================== */

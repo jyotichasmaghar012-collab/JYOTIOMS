@@ -34,7 +34,19 @@ const DEBUG = process.env.DEBUG === '1';
 // largest thing accepted) - each file is individually size-checked too.
 const MAX_CONTENT_LENGTH = 60 * 1024 * 1024;
 
-init_db();
+const storage = require('./lib/storage');
+const mongosync = require('./lib/mongosync');
+
+// Local: migrate data/oms.db right away. MongoDB mode: first pull the saved
+// database from Atlas, migrate, and save it back; requests wait for this.
+let ready;
+if (mongosync.enabled()) {
+  ready = mongosync.startup(init_db);
+  ready.catch((e) => console.error('MongoDB startup failed:', e && e.message ? e.message : e));
+} else {
+  init_db();
+  ready = Promise.resolve();
+}
 
 /* ------------------------------------------------------------------ */
 /* Template globals (Flask: @app.context_processor inject_globals)     */
@@ -197,7 +209,19 @@ app.set('query parser', 'simple');
 app.set('trust proxy', true);
 app.disable('x-powered-by');
 
-app.use('/static', express.static(path.join(BASE_DIR, 'static'), { fallthrough: true }));
+if (storage.UPLOAD_STATIC !== storage.REPO_STATIC) {
+  // Newly uploaded files (temp folder on Vercel) take priority over the repo copy.
+  app.use('/static', express.static(storage.UPLOAD_STATIC, { fallthrough: true }));
+}
+app.use('/static', express.static(storage.REPO_STATIC, { fallthrough: true }));
+if (mongosync.enabled()) {
+  // An upload this instance hasn't seen yet: fetch it from MongoDB once.
+  app.get('/static/uploads/*', (req, res, next) => {
+    mongosync.fetchUpload(req.path.replace(/^\/static\//, ''))
+      .then((p) => (p ? res.sendFile(p) : next()))
+      .catch(next);
+  });
+}
 
 app.use(cookieSession({
   name: 'session',
@@ -242,6 +266,7 @@ const STATUS_TEXT = {
   405: ['Method Not Allowed', 'The method is not allowed for the requested URL.'],
   413: ['Request Entity Too Large', 'The data value transmitted exceeds the capacity limit.'],
   500: ['Internal Server Error', 'The server encountered an internal error and was unable to complete your request.'],
+  503: ['Service Unavailable', 'The service is temporarily busy. Please try again in a moment.'],
 };
 function errorPage(code, description) {
   const [title, dflt] = STATUS_TEXT[code] || ['Error', ''];
@@ -346,13 +371,36 @@ for (const rule of ruleKeys) {
     }
     ctx.viewArgs = params;
     (async () => {
-      for (const before of h.bp.befores) {
-        const r = await before();
-        if (r !== undefined && r !== null) return sendResult(res, r);
+      await ready;
+      if (mongosync.enabled()) {
+        ctx.syncTok = await mongosync.beginRequest(!['GET', 'HEAD', 'OPTIONS'].includes(method));
       }
-      const result = await h.handler(params);
+      let result;
+      try {
+        for (const before of h.bp.befores) {
+          const r = await before();
+          if (r !== undefined && r !== null) { result = r; break; }
+        }
+        if (result === undefined) result = await h.handler(params);
+      } catch (err) {
+        close_db(ctx);
+        if (ctx.syncTok) await mongosync.endRequest(ctx.syncTok, { failed: true });
+        throw err;
+      }
+      if (ctx.syncTok) {
+        // Save to MongoDB BEFORE responding (serverless may freeze afterwards).
+        close_db(ctx);
+        const saved = await mongosync.endRequest(ctx.syncTok);
+        if (!saved) {
+          return res.status(503).type('html').send(errorPage(503,
+            'Your change could not be saved because someone else saved at the same moment. Please go back and try again.'));
+        }
+      }
       return sendResult(res, result);
-    })().catch((err) => handleError(err, res));
+    })().catch((err) => {
+      if (err && err.code === 'OMS_BUSY') return res.status(503).type('html').send(errorPage(503, err.message));
+      return handleError(err, res);
+    });
     return undefined;
   });
 }

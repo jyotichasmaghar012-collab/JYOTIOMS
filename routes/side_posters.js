@@ -15,7 +15,9 @@ const { admin_required } = require('../auth');
 
 const bp = new Blueprint('side_posters', { url_prefix: '/website/side-posters' });
 
-const POSTER_UPLOAD_DIR = path.join(BASE_DIR, 'static', 'uploads', 'side_posters');
+const { UPLOAD_STATIC } = require('../lib/storage');
+const { deleteStatic } = require('../lib/uploads');
+const POSTER_UPLOAD_DIR = path.join(UPLOAD_STATIC, 'uploads', 'side_posters');
 const ALLOWED_IMAGE_EXT = new Set(['png', 'jpg', 'jpeg', 'webp']);
 const POSTER_MAX_WIDTH = 600;
 const VALID_SIDES = ['left', 'right'];
@@ -33,13 +35,12 @@ function _save_poster_image(fileStorage, side) {
 
 async function _resize_if_huge(rel) {
   if (!rel) return;
-  await resizeIfWider(path.join(BASE_DIR, 'static', rel), POSTER_MAX_WIDTH, 88);
+  await resizeIfWider(path.join(UPLOAD_STATIC, rel), POSTER_MAX_WIDTH, 88);
 }
 
 function _delete_poster_file(rel) {
   if (!rel) return;
-  const full = path.join(BASE_DIR, 'static', rel);
-  try { if (fs.existsSync(full)) fs.unlinkSync(full); } catch (_) { /* ignore */ }
+  deleteStatic(rel);
 }
 
 const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);

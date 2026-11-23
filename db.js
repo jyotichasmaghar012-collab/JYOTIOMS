@@ -6,11 +6,10 @@ const core = require('./lib/core');
 const { generate_password_hash } = core;
 
 const BASE_DIR = __dirname;
-// On Vercel the project folder is read-only; only /tmp is writable (and it is
-// NOT permanent - it is wiped whenever the serverless instance is recycled).
-const IS_VERCEL = !!process.env.VERCEL;
-const DB_PATH = process.env.OMS_DB_PATH ||
-  (IS_VERCEL ? '/tmp/oms.db' : path.join(BASE_DIR, 'data', 'oms.db'));
+// Local: data/oms.db. On Vercel / MongoDB mode: a working copy in the temp
+// folder, kept saved in MongoDB Atlas by lib/mongosync.js.
+const storage = require('./lib/storage');
+const { DB_PATH, DATA_DIR } = storage;
 const SCHEMA_PATH = path.join(BASE_DIR, 'schema.sql');
 
 /** Per-request connection (Flask: g.db), closed - and rolled back if
@@ -66,10 +65,8 @@ function _table_exists(conn, table) {
 }
 
 function init_db() {
-  if (!IS_VERCEL) {
-    fs.mkdirSync(path.join(BASE_DIR, 'data'), { recursive: true });
-    fs.mkdirSync(path.join(BASE_DIR, 'data', 'backups'), { recursive: true });
-  }
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.mkdirSync(path.join(DATA_DIR, 'backups'), { recursive: true });
   fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
   const fresh = !fs.existsSync(DB_PATH);
   withConn((conn) => {
@@ -893,7 +890,7 @@ function ensure_wishlist_table() {
 }
 
 module.exports = {
-  BASE_DIR, DB_PATH, SCHEMA_PATH, DEFAULT_PAGE_SIZE, FRAME_TAXONOMIES, LEGACY_TEXT_MIRROR, GENDER_VALUES,
+  BASE_DIR, DB_PATH, DATA_DIR, SCHEMA_PATH, DEFAULT_PAGE_SIZE, FRAME_TAXONOMIES, LEGACY_TEXT_MIRROR, GENDER_VALUES,
   get_db, close_db, paginate, init_db, get_setting, set_setting, next_number, taxonomy_table_for,
   _table_has_column, _table_exists,
 };
