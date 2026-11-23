@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}PO {{ po['po_number'] }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Purchase Order {{ po['po_number'] }}</h1>
+  <div class="page-actions">
+    {% if po['status'] not in ('Received', 'Cancelled') %}
+    <form method="POST" action="{{ url_for('suppliers.po_cancel', po_id=po['id']) }}" style="display:inline" onsubmit="return confirm('Cancel this PO?');">
+      <button type="submit" class="btn btn-danger">Cancel PO</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="panel">
+    <h2>Supplier</h2>
+    {% if po['status'] == 'Pending' %}
+    <p class="muted" style="margin-top:0;">No supplier picked yet - this item was added straight from the order. Assign one below to move it to Ordered.</p>
+    {% if all_suppliers %}
+    <form method="POST" action="{{ url_for('suppliers.po_assign_supplier', po_id=po['id']) }}" data-ajax-save>
+      <label>Supplier</label>
+      <select name="supplier_id" required>
+        <option value="">-- Select Supplier --</option>
+        {% for s in all_suppliers %}
+        <option value="{{ s['id'] }}">{{ s['name'] }}</option>
+        {% endfor %}
+      </select>
+      <label>Unit Cost</label>
+      <input type="number" step="0.01" min="0" name="unit_cost" value="0" required>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Assign Supplier</button>
+      </div>
+    </form>
+    {% else %}
+    <a href="{{ url_for('suppliers.new') }}" class="btn btn-secondary">+ Add Supplier First</a>
+    {% endif %}
+    {% else %}
+    <p><strong>{{ po['supplier_name'] }}</strong></p>
+    <p>{{ po['supplier_phone'] or '-' }}</p>
+    {% endif %}
+  </div>
+  <div class="panel">
+    <h2>Status</h2>
+    <p>
+      <span class="badge status-{{ po['status']|replace(' ', '-')|lower }} large">{{ po['status'] }}</span>
+      <span class="badge status-{{ po['payment_status']|lower }} large">{{ po['payment_status'] }}</span>
+    </p>
+    <p class="muted">Type: {{ po['purchase_type']|replace('_',' ')|title }}</p>
+    <p class="muted">Order Date: {{ po['order_date'][:10] }}</p>
+    {% if po['expected_delivery_date'] %}<p class="muted">Expected Delivery: {{ po['expected_delivery_date'] }}</p>{% endif %}
+    {% if po['received_date'] %}<p class="muted">Fully Received: {{ po['received_date'][:10] }}</p>{% endif %}
+    {% if po['notes'] %}<p class="muted">Notes: {{ po['notes'] }}</p>{% endif %}
+  </div>
+</div>
+
+{% if prescriptions %}
+<div class="panel">
+  <h2>Prescription(s) on this PO</h2>
+  {% for pid, p in prescriptions.items() %}
+  <div class="invoice-prescription" style="margin-bottom:10px;">
+    <h3>Prescription{% if p['rx_number'] %} - Rx No. {{ p['rx_number'] }}{% endif %}</h3>
+    <table>
+      <thead><tr><th></th><th>SPH</th><th>CYL</th><th>AXIS</th></tr></thead>
+      <tbody>
+        <tr><td><strong>OD (Right)</strong></td><td>{{ p['od_sph'] or '-' }}</td><td>{{ p['od_cyl'] or '-' }}</td><td>{{ p['od_axis'] or '-' }}</td></tr>
+        <tr><td><strong>OS (Left)</strong></td><td>{{ p['os_sph'] or '-' }}</td><td>{{ p['os_cyl'] or '-' }}</td><td>{{ p['os_axis'] or '-' }}</td></tr>
+      </tbody>
+    </table>
+    <p class="rx-extra">ADD: {{ p['add_power'] or '-' }} &nbsp; | &nbsp; PD: {{ p['pd'] or '-' }}</p>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="panel">
+  <h2>Items</h2>
+  <table class="table">
+    <thead><tr><th>Description</th><th>Type</th><th>Qty</th><th>Received</th><th>Unit Cost</th><th>Total</th></tr></thead>
+    <tbody>
+    {% for it in items %}
+      <tr>
+        <td>{{ it['description'] }}</td>
+        <td>{{ it['item_type']|replace('_',' ')|title }}</td>
+        <td>{{ it['qty'] }}</td>
+        <td>{{ it['received_qty'] }}</td>
+        <td>Rs. {{ "%.2f"|format(it['unit_cost']) }}</td>
+        <td>Rs. {{ "%.2f"|format(it['total_cost']) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="order-grand-total">Total Cost: Rs. {{ "%.2f"|format(totals['total_cost']) }}</p>
+</div>
+
+{% if po['status'] not in ('Pending', 'Received', 'Cancelled') %}
+<div class="panel form-panel">
+  <h2>Receive Goods</h2>
+  <p class="muted" style="margin-top:0;">Enter the quantity of goods that arrived at the shop this time. Enter damaged/broken units separately - they won't be added to sellable stock (but will still count as "received" in the supplier's record).</p>
+  <form method="POST" action="{{ url_for('suppliers.po_receive', po_id=po['id']) }}">
+    <table class="table">
+      <thead><tr><th>Description</th><th>Ordered</th><th>Already Received</th><th>Remaining</th><th>Receive Now</th><th>Damaged (of above)</th></tr></thead>
+      <tbody>
+      {% for it in items %}
+        {% set remaining = it['qty'] - it['received_qty'] %}
+        <tr>
+          <td>{{ it['description'] }}</td>
+          <td>{{ it['qty'] }}</td>
+          <td>{{ it['received_qty'] }}</td>
+          <td>{{ remaining }}</td>
+          <td>
+            <input type="hidden" name="poi_id[]" value="{{ it['id'] }}">
+            <input type="number" name="receive_qty[]" min="0" max="{{ remaining }}" value="0" {{ 'disabled' if remaining <= 0 else '' }} style="width:80px;">
+          </td>
+          <td><input type="number" name="damaged_qty[]" min="0" max="{{ remaining }}" value="0" {{ 'disabled' if remaining <= 0 else '' }} style="width:80px;"></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Receive Goods</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+{% if po['status'] != 'Pending' %}
+<div class="panel form-panel">
+  <h2>Supplier Payment</h2>
+  <p class="muted" style="margin-top:0;">Outstanding: Rs. {{ "%.2f"|format(totals['outstanding']) }}</p>
+  <form method="POST" action="{{ url_for('suppliers.po_payment', po_id=po['id']) }}">
+    <div class="form-row">
+      <div>
+        <label>Amount Paid (Rs.)</label>
+        <input type="number" step="0.01" name="amount_paid" value="{{ po['amount_paid'] }}">
+      </div>
+      <div>
+        <label>Payment Mode</label>
+        <select name="payment_mode">
+          <option value="">-- Select --</option>
+          <option value="Cash" {{ 'selected' if po['payment_mode']=='Cash' else '' }}>Cash</option>
+          <option value="Card" {{ 'selected' if po['payment_mode']=='Card' else '' }}>Card</option>
+          <option value="UPI" {{ 'selected' if po['payment_mode']=='UPI' else '' }}>UPI</option>
+          <option value="Bank Transfer" {{ 'selected' if po['payment_mode']=='Bank Transfer' else '' }}>Bank Transfer</option>
+        </select>
+      </div>
+    </div>
+    <label>Supplier Invoice / Bill No.</label>
+    <input type="text" name="supplier_invoice_no" value="{{ po['supplier_invoice_no'] or '' }}">
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Update Payment</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Add Staff{% endblock %}
+{% block content %}
+<div class="page-header"><h1>Add Staff User</h1></div>
+<div class="panel form-panel">
+<form method="POST" data-ajax-save>
+  <label>Full Name</label>
+  <input type="text" name="full_name" required>
+  <label>Username *</label>
+  <input type="text" name="username" required>
+  <label>Password *</label>
+  <input type="password" name="password" required>
+  <label>Role</label>
+  <select name="role" id="role-select" onchange="
+    document.getElementById('branch-field').style.display = this.value==='admin' ? 'none' : 'block';
+    document.getElementById('permissions-field').style.display = this.value==='admin' ? 'none' : 'block';
+  ">
+    <option value="staff">Staff</option>
+    <option value="admin">Admin</option>
+  </select>
+  <div id="branch-field">
+    <label>Branch * (staff will only be able to view/manage data for this branch)</label>
+    <select name="branch_id">
+      <option value="">-- Select Branch --</option>
+      {% for b in branches %}
+      <option value="{{ b['id'] }}">{{ b['name'] }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div id="permissions-field">
+    <label>Access (staff will only be able to access modules ticked here)</label>
+    <div class="permission-grid">
+      {% for key, label in permission_modules %}
+      <label class="permission-option">
+        <input type="checkbox" name="permissions[]" value="{{ key }}" {{ 'checked' if key in selected_permissions else '' }}>
+        {{ label }}
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Create User</button>
+    <a href="{{ url_for('settings.users_index') }}" class="btn btn-secondary">Cancel</a>
+  </div>
+</form>
+</div>
+{% endblock %}

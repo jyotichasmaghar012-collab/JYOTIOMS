@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}{{ group['name'] }} - Product Group{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>{{ group['name'] }}</h1>
+  <div class="page-actions">
+    <a href="{{ url_for('product_groups.edit', group_id=group['id'], embed=embed) }}" class="btn btn-small btn-secondary">Edit Shared Details</a>
+    <a href="{{ url_for('product_groups.index', embed=embed) }}" class="btn btn-small btn-secondary">Back to Product Groups</a>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Shared Details</h2>
+  <p class="muted">Every color variant below inherits these on the storefront (brand/category/gender/size/description). Price, stock and photo always stay on the individual color.</p>
+  <table class="table">
+    <tbody>
+      <tr><td><strong>Brand</strong></td><td>{{ group['brand_name'] or '—' }}</td></tr>
+      <tr><td><strong>Category</strong></td><td>{{ group['category_name'] or '—' }}</td></tr>
+      <tr><td><strong>Gender</strong></td><td>{{ group['gender_name'] or '—' }}</td></tr>
+      <tr><td><strong>Frame Size</strong></td><td>{{ group['size_name'] or '—' }}</td></tr>
+      <tr><td><strong>Description</strong></td><td>{{ group['description'] or '—' }}</td></tr>
+      <tr>
+        <td><strong>Storefront Grouping</strong></td>
+        <td>
+          {% if group['is_active'] %}
+          <span class="badge status-paid">Active - shows as one product with color swatches</span>
+          {% else %}
+          <span class="badge status-due">Paused - each color currently shows separately</span>
+          {% endif %}
+          <form method="POST" action="{{ url_for('product_groups.toggle', group_id=group['id'], embed=embed) }}" style="display:inline; margin-left:8px;" data-ajax-save>
+            <button type="submit" class="btn btn-small {{ 'btn-secondary' if group['is_active'] else 'btn-primary' }}">{{ 'Pause Grouping' if group['is_active'] else 'Resume Grouping' }}</button>
+          </form>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="panel">
+  <h2>Color Variants ({{ variants|length }})</h2>
+  {% if variants %}
+  <table class="table">
+    <thead><tr><th></th><th>Brand</th><th>Frame ID</th><th>Color</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for f in variants %}
+    <tr>
+      <td>{% if f['image_path'] %}<img src="{{ url_for('static', filename=f['image_path']) }}" alt="" style="width:40px;height:40px;object-fit:cover;border-radius:6px;">{% else %}<span class="muted">No photo</span>{% endif %}</td>
+      <td>{{ f['brand'] }}</td>
+      <td>{{ f['model'] }}</td>
+      <td>{{ f['color'] or '—' }}</td>
+      <td>Rs. {{ "%.2f"|format(f['selling_price']) }}</td>
+      <td>{{ f['stock_qty'] }}</td>
+      <td>{% if f['is_active'] %}<span class="badge status-paid">Active</span>{% else %}<span class="badge status-due">Inactive</span>{% endif %}</td>
+      <td>
+        <a href="{{ url_for('inventory.frames_edit', item_id=f['id']) }}" class="btn btn-small btn-secondary">Edit</a>
+        <form method="POST" action="{{ url_for('product_groups.detach', group_id=group['id'], frame_id=f['id'], embed=embed) }}" style="display:inline" onsubmit="return confirm('Remove this color from the group? It will go back to being a standalone product.');" data-ajax-save>
+          <button type="submit" class="btn btn-small btn-danger">Detach</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No color variants attached yet. Search for an existing frame below to add its first color.</p>
+  {% endif %}
+
+  {% if not variants %}
+  <form method="POST" action="{{ url_for('product_groups.delete', group_id=group['id'], embed=embed) }}" style="margin-top:10px;" onsubmit="return confirm('Delete this empty product group?');" data-ajax-save>
+    <button type="submit" class="btn btn-small btn-danger">Delete Empty Group</button>
+  </form>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <h2>Attach a Color Variant</h2>
+  <p class="muted">Search your existing (ungrouped) frames by brand, Frame ID, model name or color, then add the matching one as a variant of this product. Frames already in a different group won't show here - detach them from that group first.</p>
+  <form method="GET" class="attr-search-form">
+    <input type="text" name="q" value="{{ q }}" placeholder="Search ungrouped frames...">
+    <input type="hidden" name="embed" value="{{ embed }}">
+    <button type="submit" class="btn btn-small btn-secondary">Search</button>
+  </form>
+
+  {% if q %}
+    {% if candidates %}
+    <table class="table" style="margin-top:12px;">
+      <thead><tr><th></th><th>Brand</th><th>Frame ID</th><th>Color</th><th>Price</th><th></th></tr></thead>
+      <tbody>
+      {% for f in candidates %}
+      <tr>
+        <td>{% if f['image_path'] %}<img src="{{ url_for('static', filename=f['image_path']) }}" alt="" style="width:36px;height:36px;object-fit:cover;border-radius:6px;">{% else %}<span class="muted">No photo</span>{% endif %}</td>
+        <td>{{ f['brand'] }}</td>
+        <td>{{ f['model'] }}</td>
+        <td>{{ f['color'] or '—' }}</td>
+        <td>Rs. {{ "%.2f"|format(f['selling_price']) }}</td>
+        <td>
+          <form method="POST" action="{{ url_for('product_groups.attach', group_id=group['id'], embed=embed) }}" style="display:inline" data-ajax-save>
+            <input type="hidden" name="frame_id" value="{{ f['id'] }}">
+            <input type="hidden" name="q" value="{{ q }}">
+            <button type="submit" class="btn btn-small btn-primary">+ Add as Variant</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty">No ungrouped frames match "{{ q }}".</p>
+    {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

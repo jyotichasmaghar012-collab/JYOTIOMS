@@ -1,0 +1,67 @@
+{# "You May Also Like" recommendations - included from cart.html and
+   checkout.html. Reuses the exact same .store-card markup/classes as the
+   homepage product grid (templates/store/home.html) so the cards match the
+   site's existing look without new card CSS, just wrapped in Swiper slides
+   instead of a CSS grid. See store/_recommendations_scripts.html for the
+   Swiper init, AJAX Add to Cart and Quick View modal wiring. #}
+{% if recommended_products %}
+<section class="store-reco-section" aria-label="You May Also Like">
+  <div class="store-reco-header">
+    <h2 class="store-section-title">You May Also Like</h2>
+    <p class="store-reco-subtitle">Recommended for you</p>
+  </div>
+  <div class="swiper store-reco-swiper">
+    <div class="swiper-wrapper">
+      {% for p in recommended_products %}
+      <div class="swiper-slide">
+        <div class="store-card store-reco-card">
+          <a href="{{ p.detail_url }}" class="store-card-link">
+            <div class="store-card-img{{ ' has-hover-img' if p.hover_image else '' }}">
+              {% if p.image_path %}
+              <img class="store-card-img-main" src="{{ url_for('static', filename=p.image_path) }}" alt="{{ p.brand }}" loading="lazy">
+              {% if p.hover_image %}
+              <img class="store-card-img-hover" src="{{ url_for('static', filename=p.hover_image) }}" alt="" loading="lazy">
+              {% endif %}
+              {% else %}<div class="store-card-noimg">📷</div>{% endif %}
+              <span class="store-reco-stock-badge{{ ' low' if p.stock_label == 'Low Stock' else '' }}">{{ p.stock_label }}</span>
+            </div>
+            <div class="store-card-body">
+              <div class="store-card-title">{{ p.brand }}{% if p.item_type == 'frame' and p.model %} {{ p.model }}{% endif %}</div>
+              <div class="store-card-details">
+                <div class="store-card-detail"><span class="store-card-detail-label">Brand:</span> {{ p.brand }}</div>
+                {% if p.item_type == 'frame' %}
+                <div class="store-card-detail"><span class="store-card-detail-label">Frame ID:</span> {{ p.model or '-' }}</div>
+                {% if p.color %}<div class="store-card-detail"><span class="store-card-detail-label">Color:</span> {{ p.color }}</div>{% endif %}
+                {% else %}
+                {% if p.model %}<div class="store-card-detail"><span class="store-card-detail-label">Lens Type:</span> {{ p.model }}</div>{% endif %}
+                {% if p.color %}<div class="store-card-detail"><span class="store-card-detail-label">Power:</span> {{ p.color }}</div>{% endif %}
+                {% endif %}
+              </div>
+              <div class="store-card-price">{{ currency }} {{ '%.0f'|format(p.price) }}</div>
+            </div>
+          </a>
+          <div class="store-reco-card-actions">
+            <button type="button" class="store-card-add-btn store-reco-add-btn" data-item-type="{{ p.item_type }}" data-item-id="{{ p.id }}">🛒 Add to Cart</button>
+            <button type="button" class="store-reco-quickview-btn" data-item-type="{{ p.item_type }}" data-item-id="{{ p.id }}" aria-label="Quick view {{ p.brand }}" title="Quick View">👁</button>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="swiper-pagination"></div>
+    <button type="button" class="swiper-button-prev" aria-label="Previous"></button>
+    <button type="button" class="swiper-button-next" aria-label="Next"></button>
+  </div>
+</section>
+
+<div class="store-modal-backdrop" id="reco-quickview-backdrop" hidden>
+  <div class="store-modal store-quickview-modal" role="dialog" aria-modal="true" aria-label="Quick View">
+    <button type="button" class="store-modal-close" id="reco-quickview-close" aria-label="Close">&times;</button>
+    <div id="reco-quickview-body" class="store-quickview-body">
+      <div class="store-quickview-loading">Loading&hellip;</div>
+    </div>
+  </div>
+</div>
+
+<div class="store-toast" id="store-toast" hidden></div>
+{% endif %}

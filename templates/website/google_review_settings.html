@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Google Review Settings{% endblock %}
+{% block content %}
+<div class="page-header"><h1>Google Review Settings</h1></div>
+
+<div class="panel form-panel">
+  <p class="muted">
+    Product reviews on this site and Google Business Reviews are two separate systems - this app never posts
+    anything to Google automatically. After a shopper submits a product review here, they're shown a
+    "Thank you - would you also like to review us on Google?" popup whose button just opens your Google
+    review link below in a new tab, so they can leave that review directly on Google themselves.
+  </p>
+  <form method="POST" data-ajax-save>
+    <label>Google Business Review URL</label>
+    <input type="text" name="google_review_url" value="{{ values['google_review_url'] }}"
+           placeholder="https://g.page/r/your-place-id/review">
+    <p class="muted" style="margin-top:4px;">
+      Find this in Google Business Profile &rarr; Ask for reviews &rarr; Get more reviews, or Google Maps &rarr;
+      your listing &rarr; Share &rarr; Write a review.
+    </p>
+
+    <div class="form-row" style="margin-top:16px;">
+      <div>
+        <label><input type="checkbox" name="google_review_popup_enabled" {{ 'checked' if values['google_review_popup_enabled']=='1' else '' }}>
+          Show the "Review us on Google" popup after a product review is submitted</label>
+      </div>
+      <div>
+        <label><input type="checkbox" name="review_request_on_delivery" {{ 'checked' if values['review_request_on_delivery']=='1' else '' }}>
+          Ask for a review by SMS when an order is marked "Delivered" (uses your Notifications settings)</label>
+      </div>
+    </div>
+
+    <hr style="margin:20px 0; border:none; border-top:1px solid var(--border);">
+    <h2 style="font-size:15px;">Homepage "Google Rating" block</h2>
+    <div class="form-row">
+      <div>
+        <label>Google Rating (e.g. 4.9)</label>
+        <input type="text" name="google_rating_value" value="{{ values['google_rating_value'] }}" placeholder="4.9">
+      </div>
+      <div>
+        <label>Rating Count Label (e.g. "Based on 500+ reviews")</label>
+        <input type="text" name="google_rating_count_label" value="{{ values['google_rating_count_label'] }}" placeholder="Based on 500+ reviews">
+      </div>
+    </div>
+
+    <hr style="margin:20px 0; border:none; border-top:1px solid var(--border);">
+    <h2 style="font-size:15px;">Review Moderation</h2>
+    <label>
+      <input type="checkbox" name="review_auto_approve" {{ 'checked' if values['review_auto_approve']=='1' else '' }}>
+      Auto-approve new reviews (publish immediately, skip admin moderation)
+    </label>
+    <p class="muted" style="margin-top:4px;">Leave unchecked to require you to Approve each review in Website Management &gt; Reviews before it appears on the storefront.</p>
+
+    <div class="form-row" style="margin-top:12px;">
+      <div>
+        <label>Minimum Review Length (characters)</label>
+        <input type="number" name="review_min_length" value="{{ values['review_min_length'] }}" min="0">
+      </div>
+      <div>
+        <label>Edit Window (hours a customer can edit their review)</label>
+        <input type="number" name="review_edit_window_hours" value="{{ values['review_edit_window_hours'] }}" min="0">
+      </div>
+    </div>
+
+    <div class="form-row" style="margin-top:12px;">
+      <div>
+        <label><input type="checkbox" name="review_allow_images" {{ 'checked' if values['review_allow_images']=='1' else '' }}> Allow customers to upload review photos</label>
+      </div>
+      <div>
+        <label><input type="checkbox" name="review_allow_videos" {{ 'checked' if values['review_allow_videos']=='1' else '' }}> Allow customers to upload a short review video</label>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Save Settings</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

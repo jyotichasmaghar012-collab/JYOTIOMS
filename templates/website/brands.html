@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Brands{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Brands</h1>
+  <div class="page-actions">
+    <a href="{{ url_for('brands.new') }}" class="btn btn-primary btn-small">+ Add Brand</a>
+  </div>
+</div>
+
+<div class="panel">
+  <form method="GET" class="search-row" style="margin-bottom:16px;">
+    <input type="text" name="q" value="{{ q }}" placeholder="Search brands...">
+    <button type="submit" class="btn btn-secondary btn-small">Search</button>
+  </form>
+
+  {% if brands %}
+  <p class="muted">Only <strong>Active</strong> brands with a logo appear in the storefront's "Shop by Brand" section. This same list also powers the Brand dropdown on Frame forms (Inventory &gt; Frames).</p>
+  <table class="table">
+    <thead><tr><th>Logo</th><th>Name</th><th>Description</th><th>Order</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for b in brands %}
+    <tr>
+      <td>
+        {% if b['logo_path'] %}
+        <div class="banner-thumb" style="width:60px;height:60px;"><img src="{{ url_for('static', filename=b['logo_path']) }}" alt="{{ b['name'] }}" style="object-fit:contain;"></div>
+        {% else %}
+        <span class="muted">-</span>
+        {% endif %}
+      </td>
+      <td>{{ b['name'] }}</td>
+      <td class="muted">{{ (b['description'] or '')[:60] }}{{ '...' if b['description'] and b['description']|length > 60 else '' }}</td>
+      <td>{{ b['display_order'] }}</td>
+      <td>
+        {% if b['is_active'] %}<span class="badge status-paid">Active</span>
+        {% else %}<span class="badge status-due">Inactive</span>{% endif %}
+      </td>
+      <td class="banner-row-actions">
+        <a href="{{ url_for('brands.edit', brand_id=b['id']) }}" class="btn btn-small btn-secondary">Edit</a>
+        <form method="POST" action="{{ url_for('brands.toggle', brand_id=b['id']) }}" style="display:inline" data-ajax-save>
+          <button type="submit" class="btn btn-small {{ 'btn-secondary' if b['is_active'] else 'btn-primary' }}">
+            {{ 'Deactivate' if b['is_active'] else 'Activate' }}
+          </button>
+        </form>
+        <form method="POST" action="{{ url_for('brands.delete', brand_id=b['id']) }}" style="display:inline" onsubmit="return confirm('Delete this brand? This cannot be undone.');" data-ajax-save>
+          <button type="submit" class="btn btn-small btn-danger">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No brands yet - <a href="{{ url_for('brands.new') }}">add the first one</a>.</p>
+  {% endif %}
+</div>
+{% endblock %}

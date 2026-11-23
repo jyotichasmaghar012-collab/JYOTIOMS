@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}{{ customer['name'] }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>{{ customer['name'] }}</h1>
+  <div class="page-actions">
+    <a href="{{ url_for('orders.new', customer_id=customer['id']) }}" class="btn btn-primary">+ New Order</a>
+    <a href="{{ url_for('customers.edit', customer_id=customer['id']) }}" class="btn btn-secondary">Edit</a>
+    <form method="POST" action="{{ url_for('customers.delete', customer_id=customer['id']) }}" style="display:inline" onsubmit="return confirm('Delete this customer? This action cannot be undone.');" data-ajax-save>
+      <button type="submit" class="btn btn-danger">Delete</button>
+    </form>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="panel">
+    <h2>Contact Info</h2>
+    <p><strong>Phone:</strong> {{ customer['phone'] or '-' }}</p>
+    <p><strong>Email:</strong> {{ customer['email'] or '-' }}</p>
+    <p><strong>Address:</strong> {{ customer['address'] or '-' }}</p>
+    <p><strong>Notes:</strong> {{ customer['notes'] or '-' }}</p>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header-row">
+      <h2>Prescriptions</h2>
+      <a href="{{ url_for('customers.new_prescription', customer_id=customer['id']) }}" class="btn btn-small btn-primary">+ Add</a>
+    </div>
+    {% if prescriptions %}
+    <table class="table small">
+      <thead><tr><th>Date</th><th>Rx No.</th><th>OD (SPH/CYL/AXIS)</th><th>OS (SPH/CYL/AXIS)</th><th>ADD</th><th>PD</th></tr></thead>
+      <tbody>
+      {% for p in prescriptions %}
+        <tr>
+          <td>{{ p['prescribed_date'] or p['created_at'][:10] }}</td>
+          <td>{{ p['rx_number'] or '-' }}</td>
+          <td>{{ p['od_sph'] }} / {{ p['od_cyl'] }} / {{ p['od_axis'] }}</td>
+          <td>{{ p['os_sph'] }} / {{ p['os_cyl'] }} / {{ p['os_axis'] }}</td>
+          <td>{{ p['add_power'] }}</td>
+          <td>{{ p['pd'] }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty">No prescription records.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Order History</h2>
+  {% if orders %}
+  <table class="table">
+    <thead><tr><th>Order#</th><th>Status</th><th>Order Date</th><th>Expected Delivery</th></tr></thead>
+    <tbody>
+    {% for o in orders %}
+      <tr class="clickable-row" onclick="window.location='{{ url_for('orders.detail', order_id=o['id']) }}'">
+        <td>{{ o['order_no'] }}</td>
+        <td><span class="badge status-{{ o['status']|replace(' ', '-')|lower }}">{{ o['status'] }}</span></td>
+        <td>{{ o['order_date'][:10] }}</td>
+        <td>{{ o['expected_delivery_date'] or '-' }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No orders yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

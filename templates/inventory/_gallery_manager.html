@@ -1,0 +1,57 @@
+{# Shared product-image-gallery manager, included from frame_form.html and
+   contact_form.html on the EDIT view (item_type + item_id + gallery must be
+   passed in). Drag-and-drop reorder, delete, and set-as-Featured all post
+   immediately via their own tiny forms/fetch calls - independent of the
+   surrounding Save button, so managing photos never risks losing unsaved
+   changes to the rest of the form. #}
+<h2 class="section-title">Product Gallery</h2>
+<div class="gallery-grid" id="gallery-grid-{{ item_type }}-{{ item_id }}">
+  {% for img in gallery %}
+  <div class="gallery-item {{ 'is-primary' if img['is_primary'] else '' }}" draggable="true" data-id="{{ img['id'] }}">
+    {% if img['is_primary'] %}<span class="gallery-item-badge">Featured</span>{% endif %}
+    <img src="{{ url_for('static', filename=img['image_path']) }}" alt="">
+    <div class="gallery-item-actions">
+      {% if not img['is_primary'] %}
+      <form method="POST" action="{{ url_for('inventory.product_images_set_primary', item_type=item_type, item_id=item_id, image_id=img['id']) }}" data-ajax-save>
+        <button type="submit">Set Featured</button>
+      </form>
+      {% endif %}
+      <form method="POST" action="{{ url_for('inventory.product_images_delete', item_type=item_type, item_id=item_id, image_id=img['id']) }}" onsubmit="return confirm('Delete this image?');" data-ajax-save>
+        <button type="submit" class="gallery-delete-btn">Delete</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% if not gallery %}<p class="muted">No gallery images yet - upload one or more below.</p>{% endif %}
+<form method="POST" action="{{ url_for('inventory.product_images_upload', item_type=item_type, item_id=item_id) }}" enctype="multipart/form-data" class="gallery-upload-row" data-ajax-save>
+  <input type="file" name="gallery_images" accept="image/png,image/jpeg,image/webp" multiple>
+  <button type="submit" class="btn btn-small btn-secondary">Upload</button>
+</form>
+<p class="field-hint">JPG, PNG or WEBP - up to 20 images. Drag thumbnails to reorder. The highlighted (red border) image is the Featured image shown on listing cards.</p>
+<script>
+(function () {
+  var grid = document.getElementById("gallery-grid-{{ item_type }}-{{ item_id }}");
+  if (!grid) return;
+  var dragEl = null;
+  grid.querySelectorAll(".gallery-item").forEach(function (item) {
+    item.addEventListener("dragstart", function () { dragEl = item; item.classList.add("dragging"); });
+    item.addEventListener("dragend", function () {
+      item.classList.remove("dragging");
+      var order = Array.from(grid.querySelectorAll(".gallery-item")).map(function (el) { return el.dataset.id; });
+      fetch("{{ url_for('inventory.product_images_reorder', item_type=item_type, item_id=item_id) }}", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order: order }),
+      });
+    });
+    item.addEventListener("dragover", function (e) {
+      e.preventDefault();
+      if (!dragEl || dragEl === item) return;
+      var rect = item.getBoundingClientRect();
+      var after = (e.clientX - rect.left) > rect.width / 2;
+      grid.insertBefore(dragEl, after ? item.nextSibling : item);
+    });
+  });
+})();
+</script>

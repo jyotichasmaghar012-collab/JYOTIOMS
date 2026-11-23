@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% from "_pagination.html" import render_pagination %}
+{% block title %}Lenses{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Lenses Inventory</h1>
+  <div class="page-actions">
+    <a href="{{ url_for('inventory.lenses_new') }}" class="btn btn-primary">+ Add Lens</a>
+  </div>
+</div>
+<div class="panel">
+{% if lenses %}
+<table class="table">
+  <thead><tr><th>Type</th><th>Material</th><th>Brand</th>{% if all_branches_view %}<th>Branch</th>{% endif %}<th>Selling Price</th><th>Stock</th><th></th></tr></thead>
+  <tbody>
+  {% for l in lenses %}
+    <tr class="{{ 'row-low-stock' if l['stock_qty'] <= l['low_stock_threshold'] else '' }}">
+      <td>{{ l['lens_type'] }}</td>
+      <td>{{ l['material'] }}</td>
+      <td>{{ l['brand'] }}</td>
+      {% if all_branches_view %}<td>{{ get_branch_name(l['branch_id']) or '-' }}</td>{% endif %}
+      <td>Rs. {{ "%.2f"|format(l['selling_price']) }}</td>
+      <td>{{ l['stock_qty'] }}{% if l['stock_qty'] <= l['low_stock_threshold'] %} <span class="badge status-low">LOW</span>{% endif %}</td>
+      <td>
+        <a href="{{ url_for('inventory.lenses_edit', item_id=l['id']) }}" class="btn btn-small">Edit</a>
+        {% if current_user.role == 'admin' %}
+        <form method="POST" action="{{ url_for('inventory.lenses_delete', item_id=l['id']) }}" style="display:inline" onsubmit="return confirm('Delete this item?');" data-ajax-save>
+          <button type="submit" class="btn btn-small btn-danger">Delete</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{{ render_pagination(page, total_pages, total, page_url) }}
+{% else %}
+<p class="empty">No lenses added yet.</p>
+{% endif %}
+</div>
+{% endblock %}

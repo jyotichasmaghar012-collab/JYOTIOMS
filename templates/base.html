@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}{{ shop_name }}{% endblock %} - OMS</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+{% if not request.path.startswith('/store') %}
+{# Installable-PWA wiring for the staff/admin OMS only (the customer
+   storefront under /store is a separate templates/store/base.html and never
+   includes this, so "Add to Home Screen" here always installs the staff
+   app, never the shop). Present on /login too (not just logged-in pages) so
+   the install prompt/icon is available even before signing in - opening the
+   installed app just lands on the login screen if the session has expired.
+   See static/manifest.webmanifest and static/sw.js - registered in the
+   script block at the bottom of this file. #}
+<link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}">
+<meta name="theme-color" content="#d32027">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Jyoti OMS">
+{% endif %}
+{% block extra_head %}{% endblock %}
+</head>
+<body>
+{% if current_user and not request.path.startswith('/store') %}
+<div class="app-shell">
+  {% if not embed %}
+  {# Mobile topbar + hamburger: the sidebar below is a fixed 240px column,
+     fine on desktop but too cramped to just squeeze onto a phone screen -
+     so on narrow viewports (see the max-width:900px rules in style.css) the
+     sidebar becomes an off-canvas drawer opened by this button, which is
+     what makes the installed staff PWA (see manifest.webmanifest/sw.js
+     above) actually usable on a phone rather than just installable. Hidden
+     entirely on desktop widths via CSS. #}
+  <div class="mobile-topbar">
+    <button type="button" class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Open menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <span class="mobile-topbar-title">{{ shop_name }}</span>
+  </div>
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+  <aside class="sidebar" id="appSidebar">
+    <div class="brand">
+      {% if shop_logo %}
+      <img src="{{ url_for('static', filename=shop_logo) }}" alt="{{ shop_name }}" class="brand-logo">
+      {% else %}
+      <span class="brand-logo-fallback">{{ shop_name }}</span>
+      {% endif %}
+    </div>
+    {% if current_user.role == 'admin' %}
+    <form method="POST" action="{{ url_for('branches.switch') }}" class="branch-switcher">
+      <input type="hidden" name="next" value="{{ request.path }}">
+      <select name="branch_id" onchange="this.form.submit()">
+        <option value="" {{ 'selected' if all_branches_view else '' }}>🏢 All Branches (Combined)</option>
+        {% for b in branch_switcher_list %}
+        <option value="{{ b['id'] }}" {{ 'selected' if active_branch_id == b['id'] else '' }}>{{ b['name'] }}</option>
+        {% endfor %}
+      </select>
+    </form>
+    {% else %}
+    <div class="branch-switcher branch-label">📍 {{ active_branch_name or 'No Branch Assigned' }}</div>
+    {% endif %}
+    <nav>
+      <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.path == '/' else '' }}">Dashboard</a>
+      <a href="{{ url_for('alerts.index') }}" class="{{ 'active' if request.path.startswith('/notifications') else '' }}" id="notifications-nav-link">🔔 Notifications{% if unread_notifications_count %} <span class="nav-badge" id="notifications-nav-badge">{{ unread_notifications_count }}</span>{% endif %}</a>
+      {% if has_permission('customer') %}
+      <a href="{{ url_for('customers.index') }}" class="{{ 'active' if request.path.startswith('/customers') else '' }}">Customers</a>
+      <a href="{{ url_for('customers.checkup_due') }}" class="{{ 'active' if '/checkup-due' in request.path else '' }}">Checkup Reminders</a>
+      {% endif %}
+      {% if has_permission('order') %}
+      <a href="{{ url_for('orders.index') }}" class="{{ 'active' if '/orders' in request.path else '' }}">Orders</a>
+      {% endif %}
+      {% if has_permission('billing') %}
+      <a href="{{ url_for('billing.index') }}" class="{{ 'active' if '/invoices' in request.path else '' }}">Billing / Invoices</a>
+      {% endif %}
+      <div class="nav-group-label">Inventory</div>
+      <a href="{{ url_for('inventory.frames_index') }}" class="{{ 'active' if '/inventory/frames' in request.path else '' }}">Frames</a>
+      <a href="{{ url_for('inventory.lenses_index') }}" class="{{ 'active' if '/inventory/lenses' in request.path else '' }}">Lenses</a>
+      <a href="{{ url_for('inventory.contacts_index') }}" class="{{ 'active' if '/inventory/contacts' in request.path else '' }}">Contact Lenses</a>
+      {% if has_permission('po_generation') %}
+      <a href="{{ url_for('suppliers.po_index') }}" class="{{ 'active' if '/purchase-orders' in request.path or '/purchase-requests' in request.path else '' }}">Purchase Orders{% if pending_po_count %} <span class="nav-badge">{{ pending_po_count }}</span>{% endif %}</a>
+      {% endif %}
+      {% if current_user.role == 'admin' %}
+      <div class="nav-group-label">Website Management</div>
+      <a href="{{ url_for('banners.index') }}" class="{{ 'active' if '/website/banners' in request.path else '' }}">Homepage Banners</a>
+      <a href="{{ url_for('brands.index') }}" class="{{ 'active' if '/website/brands' in request.path else '' }}">Brands</a>
+      <a href="{{ url_for('category_showcase.index') }}" class="{{ 'active' if '/website/categories' in request.path else '' }}">Categories</a>
+      <a href="{{ url_for('side_posters.index') }}" class="{{ 'active' if '/website/side-posters' in request.path else '' }}">Side Posters</a>
+      <a href="{{ url_for('promotions.index') }}" class="{{ 'active' if '/website/promotions' in request.path else '' }}">Promotions</a>
+      <a href="{{ url_for('content_sections.trust_items_index') }}" class="{{ 'active' if '/website/trust-items' in request.path else '' }}">Trust &amp; Benefits</a>
+      <a href="{{ url_for('content_sections.services_index') }}" class="{{ 'active' if '/website/services' in request.path else '' }}">Optical Services</a>
+      <a href="{{ url_for('coupons.index') }}" class="{{ 'active' if '/website/coupons' in request.path else '' }}">Coupons & Discounts</a>
+      <a href="{{ url_for('membership.index') }}" class="{{ 'active' if '/website/membership' in request.path else '' }}">Memberships</a>
+      <a href="{{ url_for('reviews.index') }}" class="{{ 'active' if request.path == '/website/reviews/' else '' }}">Reviews</a>
+      <a href="{{ url_for('reviews.google_settings') }}" class="{{ 'active' if '/website/reviews/settings' in request.path else '' }}">Google Review Settings</a>
+      {% endif %}
+      {% if current_user.role == 'admin' or has_permission('branch_setting') or has_permission('shop_setting') or has_permission('backup') %}
+      <div class="nav-group-label">Admin</div>
+      {% endif %}
+      {% if has_permission('branch_setting') %}
+      <a href="{{ url_for('branches.index') }}" class="{{ 'active' if '/branches' in request.path else '' }}">Branches</a>
+      {% endif %}
+      {% if has_permission('shop_setting') %}
+      <a href="{{ url_for('settings.index') }}" class="{{ 'active' if request.path == '/settings/' else '' }}">Shop Settings</a>
+      <a href="{{ url_for('settings.store_analytics') }}" class="{{ 'active' if '/settings/store-analytics' in request.path else '' }}">Store Analytics</a>
+      {% endif %}
+      <a href="{{ url_for('store.home') }}" target="_blank" rel="noopener">🌐 Online Store ↗</a>
+      {% if current_user.role == 'admin' %}
+      <a href="{{ url_for('settings.users_index') }}" class="{{ 'active' if '/settings/users' in request.path else '' }}">Staff Users</a>
+      <a href="{{ url_for('notifications.index') }}" class="{{ 'active' if '/settings/notifications' in request.path else '' }}">SMS Notifications</a>
+      {% endif %}
+      {% if has_permission('backup') %}
+      <a href="{{ url_for('settings.backup_page') }}" class="{{ 'active' if '/settings/backup' in request.path else '' }}">Backup &amp; Data</a>
+      {% endif %}
+    </nav>
+    <div class="sidebar-footer">
+      <a href="{{ url_for('settings.my_password') }}">🔑 Change Password</a>
+      <div class="user-chip">{{ current_user.full_name }} <span class="role-badge">{{ current_user.role }}</span></div>
+      <a href="{{ url_for('logout') }}" class="logout-link">Logout</a>
+    </div>
+  </aside>
+  {% endif %}
+  <main class="content">
+    {% set messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-wrap">
+        {% for category, message in messages %}
+          <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+        </div>
+      {% endif %}
+    
+    {% block content %}{% endblock %}
+  </main>
+</div>
+{% else %}
+  {% if not request.path.startswith('/store') %}
+  {% set messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-wrap standalone">
+      {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">{{ message }}</div>
+      {% endfor %}
+      </div>
+    {% endif %}
+  
+  {% endif %}
+  {% block bare_content %}{% endblock %}
+{% endif %}
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% if not request.path.startswith('/store') %}
+<script>
+  // Register the staff-OMS PWA service worker (see static/sw.js) - served
+  // from a root-level /sw.js route (routes/pwa.py) rather than /static/sw.js
+  // so its default scope covers the whole app ("/"), not just /static/.
+  // Skipped entirely on /store pages, which are the separate customer
+  // storefront and not part of this installable app.
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    });
+  }
+</script>
+{% endif %}
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,85 @@
+{% extends "store/base.html" %}
+{% block title %}Checkout - {{ shop_name }}{% endblock %}
+{% block store_content %}
+<h1>Checkout</h1>
+
+<div class="store-checkout-layout">
+  <form method="POST" class="panel form-panel store-checkout-form">
+    <label>Name *</label>
+    <input type="text" name="name" required value="{{ online_customer['name'] if online_customer else '' }}">
+    <label>Phone *</label>
+    <input type="tel" name="phone" required value="{{ online_customer['phone'] if online_customer else '' }}">
+    <label>Email (optional)</label>
+    <input type="email" name="email" value="{{ online_customer['email'] if online_customer else '' }}">
+
+    <label>Delivery</label>
+    <div class="rx-mode-toggle">
+      <label class="rx-mode-option"><input type="radio" name="delivery_type" value="pickup" id="dt-pickup" checked> I'll pick up from the store</label>
+      <label class="rx-mode-option"><input type="radio" name="delivery_type" value="delivery" id="dt-delivery"> Deliver to my home{% if delivery_charge %} (+{{ currency }} {{ '%.0f'|format(delivery_charge) }}){% endif %}</label>
+    </div>
+    <div id="delivery-address-row" class="hidden">
+      <label>Delivery Address *</label>
+      <textarea name="address" rows="2">{{ online_customer['address'] if online_customer else '' }}</textarea>
+    </div>
+
+    <label>Payment</label>
+    <div class="rx-mode-toggle">
+      <label class="rx-mode-option"><input type="radio" name="payment_method" value="cod" checked> Cash on Pickup/Delivery</label>
+      {% if razorpay_configured %}
+      <label class="rx-mode-option"><input type="radio" name="payment_method" value="online"> Pay Online Now (UPI/Card)</label>
+      {% endif %}
+    </div>
+
+    <label>Order Notes (optional)</label>
+    <input type="text" name="notes" placeholder="Any special instructions">
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Place Order</button>
+    </div>
+  </form>
+
+  <div class="panel store-order-summary">
+    <h2 class="section-title">Order Summary</h2>
+    {% for it in items %}
+    <div class="store-summary-row"><span>{{ it.label }} x{{ it.qty }}</span><span>{{ currency }} {{ '%.0f'|format(it.total) }}</span></div>
+    {% endfor %}
+    <div class="store-summary-row"><span>Subtotal</span><span>{{ currency }} {{ '%.0f'|format(grand_total) }}</span></div>
+    {% if coupon %}
+    <div class="store-summary-row store-cart-discount"><span>Discount ({{ coupon.code }})</span><span>-{{ currency }} {{ '%.2f'|format(discount_amount) }}</span></div>
+    {% endif %}
+    {% if membership_discount %}
+    <div class="store-summary-row store-cart-discount"><span>{% if membership_premium %}{{ membership_premium.plan_name }} Membership{% else %}{{ membership_tier.name }} Tier{% endif %} Discount</span><span>-{{ currency }} {{ '%.2f'|format(membership_discount) }}</span></div>
+    {% endif %}
+    {% if points_discount %}
+    <div class="store-summary-row store-cart-discount"><span>Points Discount ({{ points_used|round(2) if points_used % 1 else points_used|int }} pts)</span><span>-{{ currency }} {{ '%.2f'|format(points_discount) }}</span></div>
+    {% endif %}
+    {% if delivery_charge %}
+    <div class="store-summary-row"><span>Delivery Charge (if delivery)</span><span>{{ currency }} {{ '%.0f'|format(delivery_charge) }}</span></div>
+    {% endif %}
+    <div class="store-summary-row store-summary-total"><span>Payable Total</span><span>{{ currency }} {{ '%.0f'|format(payable_total) }}</span></div>
+    {% if coupon %}
+    <p class="field-hint">Coupon <strong>{{ coupon.code }}</strong> is applied from your cart. <a href="{{ url_for('store.cart_view') }}">Change coupon</a></p>
+    {% else %}
+    <p class="field-hint">Have a coupon? <a href="{{ url_for('store.cart_view') }}">Apply it from your cart</a> before placing the order.</p>
+    {% endif %}
+    {% if points_balance %}
+    <p class="field-hint">{% if points_used %}Redeeming <strong>{{ points_used|round(2) if points_used % 1 else points_used|int }}</strong> points from your cart. <a href="{{ url_for('store.cart_view') }}">Change</a>{% else %}You have {{ points_balance|round(2) if points_balance % 1 else points_balance|int }} points available. <a href="{{ url_for('store.cart_view') }}">Redeem them from your cart</a> before placing the order.{% endif %}</p>
+    {% endif %}
+  </div>
+</div>
+
+{% include "store/_recommendations.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const dtPickup = document.getElementById('dt-pickup');
+const dtDelivery = document.getElementById('dt-delivery');
+const addrRow = document.getElementById('delivery-address-row');
+function updateAddr() { addrRow.classList.toggle('hidden', !dtDelivery.checked); }
+dtPickup.addEventListener('change', updateAddr);
+dtDelivery.addEventListener('change', updateAddr);
+updateAddr();
+</script>
+{% include "store/_recommendations_scripts.html" %}
+{% endblock %}

@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% from "_pagination.html" import render_pagination %}
+{% block title %}Frames{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Frames Inventory</h1>
+  <div class="page-actions">
+    <a href="{{ url_for('inventory.frames_new') }}" class="btn btn-primary">+ Add Frame</a>
+    <button type="button" class="btn btn-secondary" onclick="openProductGroupsModal()">Product Groups</button>
+    {% if frames %}
+    <button type="submit" form="barcode-select-form" class="btn btn-secondary">🖨 Print Selected Barcodes</button>
+    {% endif %}
+  </div>
+</div>
+{% include "_product_groups_modal.html" %}
+<div class="panel">
+{# Search & Filter toolbar - now server-side (the list itself is paginated,
+   so client-side-only filtering of the current page's 20 rows would miss
+   matches sitting on other pages). The Brand/Category/Colour/Gender
+   dropdowns still auto-submit on change; the text search runs on Enter or
+   the Search button rather than every keystroke. Any active filter resets
+   back to page 1 (this form has no "page" field). #}
+<div class="frames-search-toolbar">
+  <form method="GET" class="frames-search-form" role="search">
+    <div class="frames-search-input-wrap">
+      <span class="frames-search-icon" aria-hidden="true">🔍</span>
+      <input type="text" name="q" value="{{ q }}" placeholder="Search by Brand, Frame ID, Model, Barcode, SKU..." autocomplete="off">
+    </div>
+    <select name="brand" onchange="this.form.submit()">
+      <option value="">All Brands</option>
+      {% for b in filter_brands %}<option value="{{ b }}" {{ 'selected' if b == brand else '' }}>{{ b }}</option>{% endfor %}
+    </select>
+    <select name="category" onchange="this.form.submit()">
+      <option value="">All Categories</option>
+      {% for c in filter_categories %}<option value="{{ c }}" {{ 'selected' if c == category else '' }}>{{ c }}</option>{% endfor %}
+    </select>
+    <select name="colour" onchange="this.form.submit()">
+      <option value="">All Colours</option>
+      {% for c in filter_colours %}<option value="{{ c }}" {{ 'selected' if c == colour else '' }}>{{ c }}</option>{% endfor %}
+    </select>
+    <select name="gender" onchange="this.form.submit()">
+      <option value="">All Genders</option>
+      {% for g in filter_genders %}<option value="{{ g }}" {{ 'selected' if g == gender else '' }}>{{ g }}</option>{% endfor %}
+    </select>
+    <button type="submit" class="btn btn-small btn-secondary">Search</button>
+    {% if q or brand or category or colour or gender %}
+    <a href="{{ url_for('inventory.frames_index') }}" class="btn btn-small">Clear</a>
+    {% endif %}
+  </form>
+  {% if q or brand or category or colour or gender %}
+  <p class="muted frames-search-status">Showing {{ total }} matching frame{{ 's' if total != 1 else '' }}</p>
+  {% endif %}
+</div>
+{% if frames %}
+{# This form is intentionally empty and does NOT wrap the table below: HTML
+   forbids nesting <form> elements, and the table's per-row action buttons
+   (Deactivate/Delete) are each their own <form>. Every checkbox/button that
+   should submit to *this* form instead uses the form="barcode-select-form"
+   attribute to associate with it from outside, per the HTML5 spec. #}
+<form method="GET" action="{{ url_for('inventory.frames_barcodes_print') }}" target="_blank" id="barcode-select-form"></form>
+<table class="table">
+  <thead><tr>
+    <th><input type="checkbox" onclick="document.querySelectorAll('.frame-check').forEach(c=>c.checked=this.checked)"></th>
+    <th>Brand</th><th>Model</th><th>Color</th><th>Size</th><th>Gender</th><th>Group</th>
+    {% if all_branches_view %}<th>Branch</th>{% endif %}
+    <th>Cost</th><th>Selling Price</th><th>Stock</th><th>Status</th><th></th>
+  </tr></thead>
+  <tbody id="frames-table-body">
+  {% for f in frames %}
+    <tr class="{{ 'row-low-stock' if f['stock_qty'] <= f['low_stock_threshold'] else '' }}">
+      <td><input type="checkbox" class="frame-check" name="ids" value="{{ f['id'] }}" onclick="event.stopPropagation()" form="barcode-select-form"></td>
+      <td>{{ f['brand'] }}</td>
+      <td>{{ f['model'] }}</td>
+      <td>{{ f['color'] }}</td>
+      <td>{{ f['size'] }}</td>
+      <td>{{ f['gender_name'] or 'Unisex' }}</td>
+      <td>{% if f['group_id'] %}<a href="{{ url_for('product_groups.manage', group_id=f['group_id']) }}">{{ f['group_name'] }}</a>{% else %}<span class="muted">—</span>{% endif %}</td>
+      {% if all_branches_view %}<td>{{ get_branch_name(f['branch_id']) or '-' }}</td>{% endif %}
+      <td>Rs. {{ "%.2f"|format(f['cost_price']) }}</td>
+      <td>Rs. {{ "%.2f"|format(f['selling_price']) }}</td>
+      <td>{{ f['stock_qty'] }}{% if f['stock_qty'] <= f['low_stock_threshold'] %} <span class="badge status-low">LOW</span>{% endif %}</td>
+      <td>{% if f['is_active'] %}<span class="badge status-paid">Active</span>{% else %}<span class="badge status-due">Inactive</span>{% endif %}</td>
+      <td>
+        <div class="frame-actions">
+        <a href="{{ url_for('inventory.frames_edit', item_id=f['id']) }}" class="btn btn-small btn-secondary">Edit</a>
+        <a href="{{ url_for('inventory.frame_barcode_single', item_id=f['id']) }}" class="btn btn-small btn-secondary" target="_blank">🖨 Barcode</a>
+        <form method="POST" action="{{ url_for('inventory.frames_toggle_active', item_id=f['id']) }}" data-ajax-save>
+          <button type="submit" class="btn btn-small {{ 'btn-secondary' if f['is_active'] else 'btn-primary' }}">{{ 'Deactivate' if f['is_active'] else 'Activate' }}</button>
+        </form>
+        {% if current_user.role == 'admin' %}
+        <form method="POST" action="{{ url_for('inventory.frames_delete', item_id=f['id']) }}" onsubmit="return confirm('Delete this item?');" data-ajax-save>
+          <button type="submit" class="btn btn-small btn-danger">Delete</button>
+        </form>
+        {% endif %}
+        </div>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{{ render_pagination(page, total_pages, total, page_url) }}
+{% else %}
+<p class="empty">
+  {% if q or brand or category or colour or gender %}No frames match your search/filters.{% else %}No frames added yet.{% endif %}
+</p>
+{% endif %}
+</div>
+{% endblock %}

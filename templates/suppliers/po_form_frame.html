@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}New Frame Purchase Order{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>New Frame Purchase Order - {{ supplier['name'] }}</h1>
+  <div class="page-actions">
+    <button type="button" class="btn btn-secondary" id="open-quick-add-frame">+ Add New Frame</button>
+  </div>
+</div>
+
+<div class="panel form-panel">
+<form method="POST" id="po-form">
+  <div class="form-row">
+    <div>
+      <label>Notes</label>
+      <input type="text" name="notes" placeholder="Any note about the purchase order">
+    </div>
+    <div>
+      <label>Expected Delivery Date</label>
+      <input type="date" name="expected_delivery_date">
+    </div>
+  </div>
+
+  <h2 class="section-title">Items Ordered</h2>
+  <table class="table" id="po-items-table">
+    <thead>
+      <tr><th style="width:13%">Type</th><th style="width:22%">Item</th><th style="width:19%">Description</th><th style="width:13%">Qty</th><th style="width:15%">Unit Cost</th><th style="width:13%">Total</th><th></th></tr>
+    </thead>
+    <tbody id="po-items-body"></tbody>
+  </table>
+  <button type="button" class="btn btn-secondary" id="po-add-item-btn">+ Add Item</button>
+
+  <div class="order-grand-total">Total Cost: Rs. <span id="po-grand-total">0.00</span></div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Create Purchase Order</button>
+    <a href="{{ url_for('suppliers.detail', supplier_id=supplier['id']) }}" class="btn btn-secondary">Cancel</a>
+  </div>
+</form>
+</div>
+
+<div id="quick-add-frame-modal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h2 class="section-title" style="margin-top:0;">+ Add New Frame</h2>
+    <label>Brand *</label>
+    <input type="text" id="qaf-brand" required>
+    <div class="form-row">
+      <div>
+        <label>Model</label>
+        <input type="text" id="qaf-model">
+      </div>
+      <div>
+        <label>Color</label>
+        <input type="text" id="qaf-color">
+      </div>
+    </div>
+    <div class="form-row">
+      <div>
+        <label>Size</label>
+        <input type="text" id="qaf-size">
+      </div>
+      <div>
+        <label>Cost Price</label>
+        <input type="number" step="0.01" id="qaf-cost" value="0">
+      </div>
+    </div>
+    <label>Selling Price</label>
+    <input type="number" step="0.01" id="qaf-selling" value="0">
+    <p class="muted" style="margin-bottom:0;">This frame will be added to inventory immediately (with 0 stock) and will also become available to select in this PO's item list.</p>
+    <div class="form-actions">
+      <button type="button" class="btn btn-primary" id="qaf-save">Save Frame</button>
+      <button type="button" class="btn btn-secondary" id="qaf-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let PO_FRAMES = [
+{% for f in frames %}
+  {id: {{ f['id'] }}, label: {{ (f['brand'] + ' ' + (f['model'] or '') + ' ' + (f['color'] or ''))|tojson }}, cost: {{ f['cost_price'] }}},
+{% endfor %}
+];
+
+function addPoItemRow(preselect) {
+  const tbody = document.getElementById('po-items-body');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="hidden" class="prow-type-hidden" value="frame"></td>
+    <td><select class="prow-ref"></select></td>
+    <td><input type="text" class="prow-desc" name="description[]" required></td>
+    <td><input type="number" class="prow-qty" name="qty[]" value="1" min="1"></td>
+    <td><input type="number" step="0.01" class="prow-cost" name="unit_cost[]" value="0"></td>
+    <td class="prow-total">0.00</td>
+    <td><button type="button" class="btn btn-small btn-danger prow-remove">X</button></td>
+  `;
+  tbody.appendChild(tr);
+  const refSel = tr.querySelector('.prow-ref');
+  const descInput = tr.querySelector('.prow-desc');
+  const qtyInput = tr.querySelector('.prow-qty');
+  const costInput = tr.querySelector('.prow-cost');
+
+  const typeHidden = document.createElement('input');
+  typeHidden.type = 'hidden'; typeHidden.name = 'item_type[]'; typeHidden.value = 'frame';
+  const refHidden = document.createElement('input');
+  refHidden.type = 'hidden'; refHidden.name = 'item_ref[]';
+  tr.appendChild(typeHidden); tr.appendChild(refHidden);
+
+  function populateRef() {
+    const currentVal = refSel.value;
+    refSel.innerHTML = '<option value="">-- custom / select --</option>';
+    PO_FRAMES.forEach(it => {
+      const opt = document.createElement('option');
+      opt.value = it.id;
+      opt.textContent = `${it.label} (current cost: Rs.${it.cost})`;
+      opt.dataset.cost = it.cost; opt.dataset.label = it.label;
+      refSel.appendChild(opt);
+    });
+    if (currentVal) refSel.value = currentVal;
+  }
+  refSel.addEventListener('change', () => {
+    const opt = refSel.options[refSel.selectedIndex];
+    if (opt && opt.dataset.label) {
+      descInput.value = opt.dataset.label;
+      if (parseFloat(opt.dataset.cost) > 0) costInput.value = opt.dataset.cost;
+      refHidden.value = opt.value;
+    } else { refHidden.value = ''; }
+    recalcRow();
+  });
+  qtyInput.addEventListener('input', recalcRow);
+  costInput.addEventListener('input', recalcRow);
+  function recalcRow() {
+    const qty = parseFloat(qtyInput.value) || 0;
+    const cost = parseFloat(costInput.value) || 0;
+    tr.querySelector('.prow-total').textContent = (qty * cost).toFixed(2);
+    recalcPoGrandTotal();
+  }
+  tr.querySelector('.prow-remove').addEventListener('click', () => { tr.remove(); recalcPoGrandTotal(); });
+  populateRef();
+  if (preselect) {
+    refSel.value = preselect.id;
+    descInput.value = preselect.label;
+    if (preselect.cost > 0) costInput.value = preselect.cost;
+    refHidden.value = preselect.id;
+  }
+  recalcRow();
+  return { refresh: populateRef };
+}
+
+const rowRefreshers = [];
+function recalcPoGrandTotal() {
+  let total = 0;
+  document.querySelectorAll('#po-items-body tr').forEach(tr => {
+    total += parseFloat(tr.querySelector('.prow-total').textContent) || 0;
+  });
+  document.getElementById('po-grand-total').textContent = total.toFixed(2);
+}
+document.getElementById('po-add-item-btn').addEventListener('click', () => rowRefreshers.push(addPoItemRow()));
+rowRefreshers.push(addPoItemRow());
+
+// Quick-add-frame modal
+const modal = document.getElementById('quick-add-frame-modal');
+document.getElementById('open-quick-add-frame').addEventListener('click', () => modal.classList.remove('hidden'));
+document.getElementById('qaf-cancel').addEventListener('click', () => modal.classList.add('hidden'));
+document.getElementById('qaf-save').addEventListener('click', () => {
+  const brand = document.getElementById('qaf-brand').value.trim();
+  if (!brand) { alert('Brand is required.'); return; }
+  const fd = new FormData();
+  fd.append('brand', brand);
+  fd.append('model', document.getElementById('qaf-model').value.trim());
+  fd.append('color', document.getElementById('qaf-color').value.trim());
+  fd.append('size', document.getElementById('qaf-size').value.trim());
+  fd.append('cost_price', document.getElementById('qaf-cost').value || 0);
+  fd.append('selling_price', document.getElementById('qaf-selling').value || 0);
+  fetch('{{ url_for("suppliers.po_frame_quick_add", supplier_id=supplier["id"]) }}', { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ok) { alert(data.error || 'Could not add frame.'); return; }
+      PO_FRAMES.push({ id: data.id, label: data.label, cost: data.cost });
+      rowRefreshers.forEach(r => r.refresh());
+      modal.classList.add('hidden');
+      document.getElementById('qaf-brand').value = '';
+      document.getElementById('qaf-model').value = '';
+      document.getElementById('qaf-color').value = '';
+      document.getElementById('qaf-size').value = '';
+      document.getElementById('qaf-cost').value = '0';
+      document.getElementById('qaf-selling').value = '0';
+      rowRefreshers.push(addPoItemRow({ id: data.id, label: data.label, cost: data.cost }));
+    });
+});
+</script>
+{% endblock %}

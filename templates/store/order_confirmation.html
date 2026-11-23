@@ -1,0 +1,40 @@
+{% extends "store/base.html" %}
+{% block title %}Order Confirmed - {{ shop_name }}{% endblock %}
+{% block store_content %}
+<div class="store-confirmation">
+  <div class="store-confirmation-card">
+    <div class="store-confirmation-icon">✓</div>
+    <h1>Order Confirmed!</h1>
+    <div class="store-order-no">Order Number: <strong>{{ order['order_no'] }}</strong></div>
+
+    <div class="store-confirmation-meta">
+      <span class="store-confirmation-pill">Status: {{ order['status'] }}</span>
+      <span class="store-confirmation-pill">
+        {{ 'Pickup from Store' if order['delivery_type'] != 'delivery' else 'Home Delivery' }}
+      </span>
+      <span class="store-confirmation-pill">
+        {{ 'Cash on Pickup/Delivery' if order['payment_method'] == 'cod' else 'Online (' + (order['online_payment_status'] or 'pending') + ')' }}
+      </span>
+    </div>
+
+    {% if order['delivery_type'] == 'delivery' %}
+    <p class="store-confirmation-note">Delivery Address: {{ order['delivery_address'] }}</p>
+    {% endif %}
+
+    <table class="table">
+      <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
+      <tbody>
+      {% for it in items %}
+        <tr><td>{{ it['description'] }}</td><td>{{ it['qty'] }}</td><td>{{ currency }} {{ '%.0f'|format(it['unit_price']) }}</td><td>{{ currency }} {{ '%.0f'|format(it['total_price']) }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+
+    <p class="store-confirmation-note">We'll call/WhatsApp you soon to confirm. If you have any questions, please contact the shop directly.</p>
+    <div class="store-confirmation-actions">
+      <a href="{{ url_for('store.home') }}" class="btn btn-primary">Continue Shopping</a>
+      <a href="{{ url_for('store.track') }}" class="btn btn-secondary">Track Order</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

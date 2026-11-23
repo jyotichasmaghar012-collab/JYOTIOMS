@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Notifications{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Notifications</h1>
+  <div class="page-actions">
+    {% if notifications|selectattr('is_read', 'equalto', 0)|list %}
+    <form method="POST" action="{{ url_for('alerts.mark_all_read') }}" data-ajax-save>
+      <button type="submit" class="btn btn-secondary btn-small">Mark all as read</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+<p class="muted" style="margin-top:-8px;">
+  New orders, orders whose delivery date has arrived but aren't marked Delivered yet, customer reviews, and
+  Premium membership requests all show up here automatically.
+</p>
+
+<div class="panel">
+{% if notifications %}
+<div class="notification-list">
+  {% for n in notifications %}
+  <div class="notification-row {{ 'is-unread' if not n['is_read'] else '' }}">
+    {% if not n['is_read'] %}<span class="notification-dot" title="Unread"></span>{% endif %}
+    <span class="notification-row-icon">
+      {% if n['type'] == 'order_placed' %}🛒
+      {% elif n['type'] == 'delivery_due' %}🚚
+      {% elif n['type'] == 'review_submitted' %}⭐
+      {% elif n['type'] == 'membership_requested' %}💳
+      {% else %}🔔
+      {% endif %}
+    </span>
+    <div class="notification-row-body">
+      <div class="notification-row-title">
+        {% if n['link_url'] %}<a href="{{ n['link_url'] }}">{{ n['title'] }}</a>{% else %}{{ n['title'] }}{% endif %}
+        <span class="badge notif-{{ n['type'] }}">
+          {% if n['type'] == 'order_placed' %}Order
+          {% elif n['type'] == 'delivery_due' %}Delivery Due
+          {% elif n['type'] == 'review_submitted' %}Review
+          {% elif n['type'] == 'membership_requested' %}Membership
+          {% else %}{{ n['type'] }}
+          {% endif %}
+        </span>
+      </div>
+      {% if n['message'] %}<div class="notification-row-message">{{ n['message'] }}</div>{% endif %}
+      <div class="notification-row-meta">{{ n['created_at'] }}{% if all_branches_view and n['branch_id'] %} &middot; {{ get_branch_name(n['branch_id']) }}{% endif %}</div>
+    </div>
+    <div class="notification-row-actions">
+      {% if not n['is_read'] %}
+      <form method="POST" action="{{ url_for('alerts.mark_read', notification_id=n['id']) }}" data-ajax-save>
+        <button type="submit" class="btn btn-small btn-secondary">Mark read</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<p class="empty">No notifications yet - new orders, delivery reminders, reviews, and membership requests will show up here.</p>
+{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% from "_pagination.html" import render_pagination %}
+{% block title %}Reviews{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Product Reviews</h1>
+  <div class="page-actions muted">{{ total }} total</div>
+</div>
+
+<div class="panel">
+  <div class="panel-header-row">
+    <div class="review-status-tabs">
+      <a href="{{ url_for('reviews.index') }}" class="{{ 'active' if not status else '' }}">All</a>
+      <a href="{{ url_for('reviews.index', status='pending') }}" class="{{ 'active' if status == 'pending' else '' }}">Pending ({{ counts.get('pending', 0) }})</a>
+      <a href="{{ url_for('reviews.index', status='approved') }}" class="{{ 'active' if status == 'approved' else '' }}">Approved ({{ counts.get('approved', 0) }})</a>
+      <a href="{{ url_for('reviews.index', status='rejected') }}" class="{{ 'active' if status == 'rejected' else '' }}">Rejected ({{ counts.get('rejected', 0) }})</a>
+      <a href="{{ url_for('reviews.index', status='hidden') }}" class="{{ 'active' if status == 'hidden' else '' }}">Hidden ({{ counts.get('hidden', 0) }})</a>
+    </div>
+    <form method="GET" class="attr-search-form">
+      {% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}
+      <select name="rating" onchange="this.form.submit()">
+        <option value="">All ratings</option>
+        {% for n in [5,4,3,2,1] %}<option value="{{ n }}" {{ 'selected' if rating == n|string else '' }}>{{ n }} Star</option>{% endfor %}
+      </select>
+      <input type="text" name="q" value="{{ q }}" placeholder="Search title, body, name...">
+      <button type="submit" class="btn btn-small btn-secondary">Search</button>
+      {% if q or rating %}<a href="{{ url_for('reviews.index', status=status) }}" class="btn btn-small">Clear</a>{% endif %}
+    </form>
+  </div>
+
+  {% if items %}
+  <table class="table">
+    <thead><tr>
+      <th>Product</th><th>Customer</th><th>Rating</th><th>Review</th><th>Media</th><th>Helpful</th><th>Date</th><th>Status</th><th></th>
+    </tr></thead>
+    <tbody>
+    {% for it in items %}
+    {% set r = it.review %}
+    <tr>
+      <td>{{ it.product_label }}</td>
+      <td>
+        {{ it.customer['name'] if it.customer else 'Unknown' }}
+        {% if r['is_anonymous'] %}<div class="muted" style="font-size:12px;">(posted anonymously)</div>{% endif %}
+      </td>
+      <td><span class="review-stars-small" aria-label="{{ r['rating'] }} out of 5 stars">{{ '★' * r['rating'] }}{{ '☆' * (5 - r['rating']) }}</span></td>
+      <td style="max-width:280px;">
+        <strong>{{ r['title'] }}</strong>
+        <div class="muted" style="font-size:12px;">{{ r['body'][:140] }}{% if r['body']|length > 140 %}…{% endif %}</div>
+        {% if r['is_verified_purchase'] %}<span class="badge status-paid" style="font-size:10px;">Verified Purchase</span>{% endif %}
+        {% if r['is_featured'] %}<span class="badge status-online" style="font-size:10px;">Featured</span>{% endif %}
+        {% if r['admin_reply'] %}<div class="muted" style="font-size:12px; margin-top:4px;">↳ Replied</div>{% endif %}
+      </td>
+      <td>
+        {% if it.images %}<div>🖼 {{ it.images|length }}</div>{% endif %}
+        {% if it.videos %}<div>🎬 {{ it.videos|length }}</div>{% endif %}
+        {% for img in it.images[:3] %}
+        <a href="{{ url_for('static', filename=img['file_path']) }}" target="_blank" rel="noopener"><img src="{{ url_for('static', filename=img['file_path']) }}" alt="" style="width:32px;height:32px;object-fit:cover;border-radius:4px;margin:2px;"></a>
+        {% endfor %}
+      </td>
+      <td>{{ r['helpful_count'] }}</td>
+      <td class="muted" style="font-size:12px;">{{ r['created_at'][:10] }}{% if r['edited_at'] %}<br>(edited){% endif %}</td>
+      <td>
+        {% if r['status'] == 'approved' %}<span class="badge status-paid">Approved</span>
+        {% elif r['status'] == 'pending' %}<span class="badge status-pending">Pending</span>
+        {% elif r['status'] == 'rejected' %}<span class="badge status-due">Rejected</span>
+        {% else %}<span class="badge status-skipped-not-configured">Hidden</span>{% endif %}
+      </td>
+      <td class="review-admin-actions">
+        {% if r['status'] == 'pending' %}
+        <form method="POST" action="{{ url_for('reviews.approve', review_id=r['id']) }}" style="display:inline" data-ajax-save>
+          <button type="submit" class="btn btn-small btn-primary">Approve</button>
+        </form>
+        <form method="POST" action="{{ url_for('reviews.reject', review_id=r['id']) }}" style="display:inline" data-ajax-save>
+          <button type="submit" class="btn btn-small btn-secondary">Reject</button>
+        </form>
+        {% endif %}
+        {% if r['status'] in ('approved', 'hidden') %}
+        <form method="POST" action="{{ url_for('reviews.hide', review_id=r['id']) }}" style="display:inline" data-ajax-save>
+          <button type="submit" class="btn btn-small btn-secondary">{{ 'Unhide' if r['status'] == 'hidden' else 'Hide' }}</button>
+        </form>
+        {% endif %}
+        {% if r['status'] == 'approved' %}
+        <form method="POST" action="{{ url_for('reviews.feature', review_id=r['id']) }}" style="display:inline" data-ajax-save>
+          <button type="submit" class="btn btn-small {{ 'btn-secondary' if r['is_featured'] else 'btn-primary' }}">{{ 'Unfeature' if r['is_featured'] else 'Feature' }}</button>
+        </form>
+        {% endif %}
+        <button type="button" class="btn btn-small btn-secondary" onclick="var p=document.getElementById('reply-row-{{ r['id'] }}'); p.style.display = p.style.display === 'none' ? 'table-row' : 'none';">Reply</button>
+        <form method="POST" action="{{ url_for('reviews.delete', review_id=r['id']) }}" style="display:inline" onsubmit="return confirm('Permanently delete this review? This cannot be undone.');" data-ajax-save>
+          <button type="submit" class="btn btn-small btn-danger">Delete</button>
+        </form>
+      </td>
+    </tr>
+    <tr id="reply-row-{{ r['id'] }}" style="display:none;">
+      <td colspan="9">
+        <form method="POST" action="{{ url_for('reviews.reply', review_id=r['id']) }}" class="review-reply-form" data-ajax-save>
+          <textarea name="admin_reply" rows="2" placeholder="Write a public reply to this review...">{{ r['admin_reply'] or '' }}</textarea>
+          <button type="submit" class="btn btn-small btn-primary">Save Reply</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {{ render_pagination(page, total_pages, filtered_total, page_url) }}
+  {% else %}
+  <p class="empty">No reviews {% if q or rating or status %}match this filter{% else %}have been submitted yet{% endif %}.</p>
+  {% endif %}
+</div>
+{% endblock %}

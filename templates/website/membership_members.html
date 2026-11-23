@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Members{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Members</h1>
+  <div class="page-actions">
+    <a href="{{ url_for('membership.index') }}" class="btn btn-secondary btn-small">&larr; Tiers &amp; Plans</a>
+  </div>
+</div>
+
+{% if pending_requests %}
+<div class="panel">
+  <h2>Pending Premium Requests ({{ pending_requests|length }})</h2>
+  <p class="muted">A customer tapped "Request Premium" on the storefront. Once you've collected payment from them (cash/UPI/bank transfer), approve the request to activate their membership.</p>
+  <table class="table">
+    <thead><tr><th>Customer</th><th>Phone</th><th>Plan</th><th>Price</th><th>Requested</th><th></th></tr></thead>
+    <tbody>
+    {% for r in pending_requests %}
+    <tr>
+      <td>{{ r['customer_name'] }}</td>
+      <td>{{ r['customer_phone'] }}</td>
+      <td>{{ r['plan_name'] }}</td>
+      <td>Rs. {{ '%.0f'|format(r['plan_price']) }}</td>
+      <td class="muted" style="font-size:12px;">{{ r['created_at'] }}</td>
+      <td>
+        <form method="POST" action="{{ url_for('membership.approve_request', membership_id=r['id']) }}" style="display:inline" data-ajax-save>
+          <button type="submit" class="btn btn-small btn-primary">Approve &amp; Activate</button>
+        </form>
+        <form method="POST" action="{{ url_for('membership.dismiss_request', membership_id=r['id']) }}" style="display:inline" data-ajax-save>
+          <button type="submit" class="btn btn-small btn-secondary">Dismiss</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<div class="panel">
+  <div class="panel-header-row">
+    <h2>Find a Customer</h2>
+    <form method="GET" class="attr-search-form">
+      <input type="text" name="q" value="{{ q }}" placeholder="Search by name or phone...">
+      <button type="submit" class="btn btn-small btn-secondary">Search</button>
+      {% if q %}<a href="{{ url_for('membership.members') }}" class="btn btn-small">Clear</a>{% endif %}
+    </form>
+  </div>
+
+  {% if q %}
+    {% if rows %}
+    <table class="table">
+      <thead><tr><th>Customer</th><th>Lifetime Spend</th><th>Tier</th><th>Premium Membership</th><th>Assign / Renew Premium</th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.customer['name'] }}<div class="muted" style="font-size:12px;">{{ r.customer['phone'] }}</div></td>
+        <td>Rs. {{ '%.0f'|format(r.spend) }}</td>
+        <td>
+          {% if r.tier %}<span class="badge status-paid">{{ r.tier['name'] }}</span>{% else %}<span class="muted">None</span>{% endif %}
+          {% if r.next_tier %}<div class="muted" style="font-size:12px;">Rs. {{ '%.0f'|format(r.next_tier['min_spend'] - r.spend) }} more to {{ r.next_tier['name'] }}</div>{% endif %}
+        </td>
+        <td>
+          {% if r.premium %}
+          <span class="badge status-paid">{{ r.premium['plan_name'] }}</span>
+          <div class="muted" style="font-size:12px;">until {{ r.premium['expires_at'] }}</div>
+          <form method="POST" action="{{ url_for('membership.cancel_premium', customer_id=r.customer['id']) }}" data-ajax-save>
+            <input type="hidden" name="q" value="{{ q }}">
+            <button type="submit" class="btn btn-small btn-secondary">Cancel</button>
+          </form>
+          {% else %}
+          <span class="muted">None</span>
+          {% endif %}
+        </td>
+        <td>
+          <form method="POST" action="{{ url_for('membership.assign_premium', customer_id=r.customer['id']) }}" style="display:flex;gap:6px;" data-ajax-save>
+            <input type="hidden" name="q" value="{{ q }}">
+            <select name="plan_id" required>
+              {% for p in plans %}
+              <option value="{{ p['id'] }}">{{ p['name'] }} (Rs. {{ '%.0f'|format(p['price']) }})</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-small btn-primary">{{ 'Renew' if r.premium else 'Assign' }}</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty">No customers match "{{ q }}".</p>
+    {% endif %}
+  {% else %}
+  <p class="muted">Search for a customer by name or phone to see their tier and manage their Premium membership.</p>
+  {% endif %}
+</div>
+{% endblock %}

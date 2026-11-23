@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% from "_pagination.html" import render_pagination %}
+{% block title %}Customers{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Customers</h1>
+  <div class="page-actions">
+    <a href="{{ url_for('customers.new') }}" class="btn btn-primary">+ New Customer</a>
+  </div>
+</div>
+
+<form method="GET" class="search-bar">
+  <input type="text" name="q" placeholder="Search by name, phone or email..." value="{{ q }}">
+  <button type="submit" class="btn btn-secondary">Search</button>
+</form>
+
+<div class="panel">
+{% if customers %}
+<table class="table">
+  <thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>Added</th><th></th></tr></thead>
+  <tbody>
+  {% for c in customers %}
+    <tr class="clickable-row" onclick="window.location='{{ url_for('customers.detail', customer_id=c['id']) }}'">
+      <td>{{ c['name'] }}</td>
+      <td>{{ c['phone'] }}</td>
+      <td>{{ c['email'] }}</td>
+      <td>{{ c['created_at'][:10] }}</td>
+      <td><a href="{{ url_for('customers.detail', customer_id=c['id']) }}" class="btn btn-small">View</a></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{{ render_pagination(page, total_pages, total, page_url) }}
+{% else %}
+<p class="empty">No customers found.</p>
+{% endif %}
+</div>
+{% endblock %}

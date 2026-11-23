@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% from "_pagination.html" import render_pagination %}
+{% block title %}Notifications{% endblock %}
+{% block content %}
+<div class="page-header"><h1>SMS / WhatsApp Notifications</h1></div>
+
+<div class="panel form-panel">
+  <p class="muted">
+    An automatic SMS can go out to the customer when an order becomes "Ready for Pickup", if you set up
+    a provider below. Without a provider, this feature will just record it in the log and won't send a message.
+  </p>
+  <form method="POST" data-ajax-save>
+    <label>Provider</label>
+    <select name="notify_provider" id="provider-select">
+      <option value="none" {{ 'selected' if values['notify_provider']=='none' else '' }}>None (disabled)</option>
+      <option value="fast2sms" {{ 'selected' if values['notify_provider']=='fast2sms' else '' }}>Fast2SMS (India SMS gateway)</option>
+      <option value="generic_webhook" {{ 'selected' if values['notify_provider']=='generic_webhook' else '' }}>Generic Webhook (any SMS/WhatsApp API)</option>
+    </select>
+
+    <label>API Key (Fast2SMS)</label>
+    <input type="text" name="notify_api_key" value="{{ values['notify_api_key'] }}" placeholder="Get this from Fast2SMS.com > Dev API">
+
+    <label>Sender ID (optional)</label>
+    <input type="text" name="notify_sender_id" value="{{ values['notify_sender_id'] }}">
+
+    <label>Generic Webhook URL (if you're using that provider)</label>
+    <input type="text" name="notify_webhook_url" value="{{ values['notify_webhook_url'] }}"
+           placeholder="https://api.example.com/send?to={phone}&text={message}">
+    <p class="muted" style="margin-top:4px;">Write <code>{phone}</code> and <code>{message}</code> in the URL exactly like this - the system will replace them.</p>
+
+    <div class="form-row" style="margin-top:16px;">
+      <div>
+        <label><input type="checkbox" name="notify_on_ready" {{ 'checked' if values['notify_on_ready']=='1' else '' }}> Send an auto-SMS when order becomes "Ready for Pickup"</label>
+      </div>
+      <div>
+        <label><input type="checkbox" name="notify_on_delivered" {{ 'checked' if values['notify_on_delivered']=='1' else '' }}> Also send an auto-SMS when order becomes "Delivered"</label>
+      </div>
+    </div>
+
+    <label>Customer Checkup Reminder - how many months later to consider it due</label>
+    <input type="number" name="checkup_reminder_months" value="{{ values['checkup_reminder_months'] }}">
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Save Settings</button>
+    </div>
+  </form>
+</div>
+
+<div class="panel form-panel">
+  <h2>Send Test Message</h2>
+  <form method="POST" action="{{ url_for('notifications.test_send') }}" data-ajax-save>
+    <label>Phone Number</label>
+    <input type="text" name="test_phone" placeholder="9876543210" required>
+    <label>Message</label>
+    <input type="text" name="test_message" value="Test message from your Optical Shop OMS.">
+    <div class="form-actions">
+      <button type="submit" class="btn btn-secondary">Send Test</button>
+    </div>
+  </form>
+</div>
+
+<div class="panel">
+  <h2>Recent Notification History</h2>
+  {% if history %}
+  <table class="table small">
+    <thead><tr><th>Date</th><th>Customer</th><th>Phone</th><th>Message</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for h in history %}
+      <tr>
+        <td>{{ h['created_at'][:16] }}</td>
+        <td>{{ h['customer_name'] or '-' }}</td>
+        <td>{{ h['phone'] }}</td>
+        <td>{{ h['message'][:60] }}</td>
+        <td><span class="badge status-{{ h['status']|replace('_','-') }}">{{ h['status'] }}</span></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {{ render_pagination(history_page, history_total_pages, history_total, history_page_url) }}
+  {% else %}
+  <p class="empty">No notification has been sent yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

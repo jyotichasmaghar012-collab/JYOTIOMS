@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% from "_pagination.html" import render_pagination %}
+{% block title %}Orders{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Orders</h1>
+  <div class="page-actions">
+    <a href="{{ url_for('orders.new') }}" class="btn btn-primary">+ New Order</a>
+  </div>
+</div>
+
+<form method="GET" class="search-bar">
+  <input type="text" name="q" placeholder="Search by order#, customer name or phone..." value="{{ q }}">
+  <select name="status">
+    <option value="">All Status</option>
+    {% for s in statuses %}
+    <option value="{{ s }}" {{ 'selected' if s == status else '' }}>{{ s }}</option>
+    {% endfor %}
+  </select>
+  <select name="source">
+    <option value="">Online + In-Store</option>
+    <option value="online" {{ 'selected' if source == 'online' else '' }}>Online Only</option>
+    <option value="in_store" {{ 'selected' if source == 'in_store' else '' }}>In-Store Only</option>
+  </select>
+  <button type="submit" class="btn btn-secondary">Filter</button>
+</form>
+
+{# Clickable, sortable column headers: clicking a header sorts by that
+   column (ascending on first click, flips to descending on a second click
+   of the same header - see routes/orders.py's SORT_COLUMNS whitelist),
+   preserving whatever search/status/source filters are currently applied.
+   An arrow after the label shows the active sort column and direction. #}
+{% macro sort_th(key, label) %}
+  {% set next_dir = 'desc' if sort == key and sort_dir == 'asc' else 'asc' %}
+  <th><a class="sort-th-link{{ ' active' if sort == key else '' }}" href="{{ url_for('orders.index', q=q, status=status, source=source, sort=key, dir=next_dir) }}">{{ label }}{% if sort == key %}<span class="sort-arrow">{{ '▲' if sort_dir == 'asc' else '▼' }}</span>{% endif %}</a></th>
+{% endmacro %}
+<div class="panel">
+{% if orders %}
+<table class="table">
+  <thead><tr>
+    {{ sort_th('order_no', 'Order#') }}
+    {{ sort_th('customer', 'Customer') }}
+    {{ sort_th('phone', 'Phone') }}
+    {% if all_branches_view %}{{ sort_th('branch', 'Branch') }}{% endif %}
+    {{ sort_th('source', 'Source') }}
+    {{ sort_th('status', 'Status') }}
+    {{ sort_th('order_date', 'Order Date') }}
+    {{ sort_th('expected_delivery', 'Expected Delivery') }}
+  </tr></thead>
+  <tbody>
+  {% for o in orders %}
+    <tr class="clickable-row" onclick="window.location='{{ url_for('orders.detail', order_id=o['id']) }}'">
+      <td>{{ o['order_no'] }}</td>
+      <td>{{ o['customer_name'] }}</td>
+      <td>{{ o['customer_phone'] }}</td>
+      {% if all_branches_view %}<td>{{ get_branch_name(o['branch_id']) or '-' }}</td>{% endif %}
+      <td>{% if o['source'] == 'online' %}<span class="badge status-online">🌐 Online</span>{% else %}<span class="badge status-in-store">In-Store</span>{% endif %}</td>
+      <td><span class="badge status-{{ o['status']|replace(' ', '-')|lower }}">{{ o['status'] }}</span></td>
+      <td>{{ o['order_date'][:10] }}</td>
+      <td>{{ o['expected_delivery_date'] or '-' }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{{ render_pagination(page, total_pages, total, page_url) }}
+{% else %}
+<p class="empty">No orders found.</p>
+{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Dashboard {% if not all_branches_view %}<span class="sub-heading" style="font-size:14px;">— {{ active_branch_name }}</span>{% else %}<span class="sub-heading" style="font-size:14px;">— All Branches (Combined)</span>{% endif %}</h1>
+  <div class="page-actions">
+    <a href="{{ url_for('orders.new') }}" class="btn btn-primary">+ New Order</a>
+    <a href="{{ url_for('customers.new') }}" class="btn btn-secondary">+ New Customer</a>
+  </div>
+</div>
+
+<div class="stat-grid">
+  <div class="stat-card">
+    <div class="stat-label">Today's Orders</div>
+    <div class="stat-value">{{ today_orders }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Pending Orders</div>
+    <div class="stat-value">{{ pending_orders }}</div>
+  </div>
+  <div class="stat-card warn">
+    <div class="stat-label">Total Due</div>
+    <div class="stat-value">Rs. {{ "%.2f"|format(total_due) }}</div>
+  </div>
+  <div class="stat-card good">
+    <div class="stat-label">This Month Revenue</div>
+    <div class="stat-value">Rs. {{ "%.2f"|format(month_revenue) }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Pending Purchase Orders</div>
+    <div class="stat-value">{{ pending_pos }}</div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="panel">
+    <h2>Recent Orders</h2>
+    {% if recent_orders %}
+    <table class="table">
+      <thead><tr><th>Order#</th><th>Customer</th><th>Status</th><th>Date</th></tr></thead>
+      <tbody>
+      {% for o in recent_orders %}
+        <tr onclick="window.location='{{ url_for('orders.detail', order_id=o['id']) }}'" class="clickable-row">
+          <td>{{ o['order_no'] }}</td>
+          <td>{{ o['customer_name'] }}</td>
+          <td><span class="badge status-{{ o['status']|replace(' ', '-')|lower }}">{{ o['status'] }}</span></td>
+          <td>{{ o['order_date'][:10] }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty">No orders yet.</p>
+    {% endif %}
+  </div>
+
+  <div class="panel">
+    <div class="panel-header-row">
+      <h2>Checkup Reminders Due ({{ checkup_due_total }})</h2>
+      {% if checkup_due_total > 0 %}
+      <a href="{{ url_for('customers.checkup_due') }}" class="btn btn-small btn-primary">View All</a>
+      {% endif %}
+    </div>
+    {% if checkup_due %}
+    <ul class="alert-list">
+      {% for c in checkup_due %}
+      <li><span>{{ c['name'] }}</span> <strong>{{ c['last_checkup'][:10] if c['last_checkup'] else '-' }}</strong></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="empty">No customers due for a checkup. 👍</p>
+    {% endif %}
+  </div>
+
+  <div class="panel">
+    <h2>Low Stock Alerts</h2>
+    {% if low_stock_frames or low_stock_lenses or low_stock_contacts %}
+      {% if low_stock_frames %}
+      <h3 class="sub-heading">Frames</h3>
+      <ul class="alert-list">
+        {% for f in low_stock_frames %}
+        <li><span>{{ f['brand'] }} {{ f['model'] }}</span> <strong>{{ f['stock_qty'] }} left</strong></li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      {% if low_stock_lenses %}
+      <h3 class="sub-heading">Lenses</h3>
+      <ul class="alert-list">
+        {% for l in low_stock_lenses %}
+        <li><span>{{ l['lens_type'] }} ({{ l['brand'] }})</span> <strong>{{ l['stock_qty'] }} left</strong></li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      {% if low_stock_contacts %}
+      <h3 class="sub-heading">Contact Lenses</h3>
+      <ul class="alert-list">
+        {% for cl in low_stock_contacts %}
+        <li><span>{{ cl['brand'] }} {{ cl['lens_type'] }}</span> <strong>{{ cl['stock_qty'] }} left</strong></li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    {% else %}
+    <p class="empty">All stock levels look good. 👍</p>
+    {% endif %}
+  </div>
+</div>
+
+{% if branch_breakdown %}
+<div class="panel" style="margin-top:20px;">
+  <h2>Branch-wise Breakdown</h2>
+  {% if branch_breakdown %}
+  <table class="table">
+    <thead><tr><th>Branch</th><th>Today's Orders</th><th>Pending Orders</th><th>Total Due</th><th>This Month Revenue</th><th>Pending POs</th></tr></thead>
+    <tbody>
+    {% for row in branch_breakdown %}
+      <tr>
+        <td>{{ row.branch['name'] }}</td>
+        <td>{{ row.stats.today_orders }}</td>
+        <td>{{ row.stats.pending_orders }}</td>
+        <td>Rs. {{ "%.2f"|format(row.stats.total_due) }}</td>
+        <td>Rs. {{ "%.2f"|format(row.stats.month_revenue) }}</td>
+        <td>{{ row.stats.pending_pos }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No branches created yet. Create one from Admin &gt; Branches.</p>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

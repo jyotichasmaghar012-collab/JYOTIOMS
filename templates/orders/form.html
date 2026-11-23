@@ -1,0 +1,376 @@
+{% extends "base.html" %}
+{% block title %}New Order{% endblock %}
+{% block content %}
+<div class="page-header"><h1>New Order</h1></div>
+
+<div class="panel form-panel">
+<form method="POST" id="order-form">
+  <div class="form-row">
+    <div>
+      <label>Customer *</label>
+      <select name="customer_id" id="customer_id" required>
+        <option value="">-- Select Customer --</option>
+        {% for c in customers %}
+        <option value="{{ c['id'] }}" {{ 'selected' if preselect_customer == c['id'] else '' }}>{{ c['name'] }} ({{ c['phone'] or 'no phone' }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Expected Delivery Date</label>
+      <input type="date" name="expected_delivery_date">
+    </div>
+  </div>
+
+  <label>Prescription</label>
+  <div class="rx-mode-toggle">
+    <label class="rx-mode-option"><input type="radio" name="rx_mode" value="existing" id="rx-mode-existing" checked> Select an existing prescription</label>
+    <label class="rx-mode-option"><input type="radio" name="rx_mode" value="new" id="rx-mode-new"> Save the customer's eye test/prescription now</label>
+  </div>
+
+  <div id="existing-rx-panel">
+    <label>Prescription (optional)</label>
+    <select name="prescription_id" id="prescription_id">
+      <option value="">-- No prescription selected --</option>
+    </select>
+  </div>
+
+  <div id="new-rx-panel" class="hidden">
+    <label>Eye Test / Prescription No. (optional)</label>
+    <input type="text" name="new_rx_number" placeholder="Eye-test slip ka reference number">
+
+    <div class="rx-grid">
+      <div></div><div class="rx-col-label">SPH</div><div class="rx-col-label">CYL</div><div class="rx-col-label">AXIS</div>
+      <div class="rx-row-label">Right Eye (OD)</div>
+      <input type="text" name="new_od_sph" placeholder="e.g. -1.25">
+      <input type="text" name="new_od_cyl" placeholder="e.g. -0.50">
+      <input type="text" name="new_od_axis" placeholder="e.g. 90">
+      <div class="rx-row-label">Left Eye (OS)</div>
+      <input type="text" name="new_os_sph" placeholder="e.g. -1.00">
+      <input type="text" name="new_os_cyl" placeholder="e.g. -0.75">
+      <input type="text" name="new_os_axis" placeholder="e.g. 85">
+    </div>
+
+    <div class="form-row">
+      <div>
+        <label>ADD Power</label>
+        <input type="text" name="new_add_power" placeholder="e.g. +2.00">
+      </div>
+      <div>
+        <label>PD (Pupillary Distance)</label>
+        <input type="text" name="new_pd" placeholder="e.g. 62mm">
+      </div>
+    </div>
+    <div class="form-row">
+      <div>
+        <label>Prescribed By</label>
+        <div class="inline-form">
+          <select name="new_prescribed_by" id="new_prescribed_by_select" style="flex:1;">
+            <option value="">-- Select --</option>
+          </select>
+          <button type="button" class="btn btn-small btn-secondary" id="add-prescriber-btn">+ New</button>
+        </div>
+        <div id="new-prescriber-row" class="hidden inline-form">
+          <input type="text" id="new-prescriber-input" placeholder="Enter new name">
+          <button type="button" class="btn btn-small btn-primary" id="save-prescriber-btn">Add</button>
+          <button type="button" class="btn btn-small btn-secondary" id="cancel-prescriber-btn">Cancel</button>
+        </div>
+      </div>
+      <div>
+        <label>Prescribed Date</label>
+        <input type="date" name="new_prescribed_date">
+      </div>
+    </div>
+  </div>
+
+  <label>Notes</label>
+  <input type="text" name="notes" placeholder="Any note about the order">
+
+  <h2 class="section-title">Order Items</h2>
+  <table class="table" id="items-table">
+    <thead>
+      <tr><th style="width:13%">Type</th><th style="width:23%">Item</th><th style="width:20%">Description</th><th style="width:12%">Qty</th><th style="width:14%">Unit Price</th><th style="width:14%">Total</th><th></th></tr>
+    </thead>
+    <tbody id="items-body">
+    </tbody>
+  </table>
+  <button type="button" class="btn btn-secondary" id="add-item-btn">+ Add Item</button>
+
+  <div class="order-summary-row">Subtotal: Rs. <span id="grand-total">0.00</span></div>
+  <div class="order-summary-row order-cart-discount hidden" id="membership-discount-row">
+    Membership Discount (<span id="membership-label"></span>): -Rs. <span id="membership-discount-amount">0.00</span>
+  </div>
+  <div class="order-summary-row hidden" id="points-balance-row">
+    Points Balance: <strong id="points-balance">0</strong> pts &nbsp;
+    <label style="font-weight:normal;">Redeem: <input type="number" id="points-redeem-input" name="points_redeem" min="0" step="1" value="0" style="width:90px;"></label>
+  </div>
+  <div class="order-summary-row order-cart-discount hidden" id="points-discount-row">
+    Points Discount (<span id="points-used-label">0</span> pts): -Rs. <span id="points-discount-amount">0.00</span>
+  </div>
+  <div class="order-grand-total">Payable Total: Rs. <span id="payable-total">0.00</span></div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Create Order</button>
+    <a href="{{ url_for('orders.index') }}" class="btn btn-secondary">Cancel</a>
+  </div>
+</form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const FRAMES = [
+{% for f in frames %}
+  {id: {{ f['id'] }}, label: {{ (f['brand'] + ' ' + (f['model'] or '') + ' ' + (f['color'] or '') + ' (' + (f['size'] or '') + ')')|tojson }}, price: {{ f['selling_price'] }}, stock: {{ f['stock_qty'] }}},
+{% endfor %}
+];
+const LENSES = [
+{% for l in lenses %}
+  {id: {{ l['id'] }}, label: {{ (l['lens_type'] + ' - ' + (l['brand'] or '') + ' (' + (l['material'] or '') + ')')|tojson }}, price: {{ l['selling_price'] }}, stock: {{ l['stock_qty'] }}},
+{% endfor %}
+];
+const CONTACTS = [
+{% for cl in contacts %}
+  {id: {{ cl['id'] }}, label: {{ (cl['brand'] + ' ' + (cl['lens_type'] or '') + ' ' + (cl['power'] or ''))|tojson }}, price: {{ cl['selling_price'] }}, stock: {{ cl['stock_qty'] }}},
+{% endfor %}
+];
+
+function itemsForType(type) {
+  if (type === 'frame') return FRAMES;
+  if (type === 'lens') return LENSES;
+  if (type === 'contact_lens') return CONTACTS;
+  return [];
+}
+
+function addItemRow() {
+  const tbody = document.getElementById('items-body');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td>
+      <select class="row-type">
+        <option value="frame">Frame</option>
+        <option value="lens">Lens</option>
+        <option value="contact_lens">Contact Lens</option>
+        <option value="other">Other</option>
+      </select>
+    </td>
+    <td>
+      <select class="row-ref"></select>
+    </td>
+    <td><input type="text" class="row-desc" name="description[]" required></td>
+    <td><input type="number" class="row-qty" name="qty[]" value="1" min="1"></td>
+    <td><input type="number" step="0.01" class="row-price" name="unit_price[]" value="0"></td>
+    <td class="row-total">0.00</td>
+    <td><button type="button" class="btn btn-small btn-danger remove-row">X</button></td>
+  `;
+  tbody.appendChild(tr);
+
+  const typeSel = tr.querySelector('.row-type');
+  const refSel = tr.querySelector('.row-ref');
+  const descInput = tr.querySelector('.row-desc');
+  const qtyInput = tr.querySelector('.row-qty');
+  const priceInput = tr.querySelector('.row-price');
+
+  // hidden input to carry item_type/item_ref for form submission
+  const typeHidden = document.createElement('input');
+  typeHidden.type = 'hidden'; typeHidden.name = 'item_type[]';
+  const refHidden = document.createElement('input');
+  refHidden.type = 'hidden'; refHidden.name = 'item_ref[]';
+  tr.appendChild(typeHidden);
+  tr.appendChild(refHidden);
+
+  function populateRef() {
+    const items = itemsForType(typeSel.value);
+    refSel.innerHTML = '<option value="">-- custom / select --</option>';
+    items.forEach(it => {
+      const opt = document.createElement('option');
+      opt.value = it.id;
+      opt.textContent = `${it.label} - Rs.${it.price} (stock: ${it.stock})`;
+      opt.dataset.price = it.price;
+      opt.dataset.label = it.label;
+      refSel.appendChild(opt);
+    });
+    refSel.disabled = (typeSel.value === 'other');
+    typeHidden.value = typeSel.value;
+  }
+
+  refSel.addEventListener('change', () => {
+    const opt = refSel.options[refSel.selectedIndex];
+    if (opt && opt.dataset.price) {
+      priceInput.value = opt.dataset.price;
+      descInput.value = opt.dataset.label;
+      refHidden.value = opt.value;
+    } else {
+      refHidden.value = '';
+    }
+    recalcRow();
+  });
+  typeSel.addEventListener('change', () => { populateRef(); recalcRow(); });
+  qtyInput.addEventListener('input', recalcRow);
+  priceInput.addEventListener('input', recalcRow);
+
+  function recalcRow() {
+    const qty = parseFloat(qtyInput.value) || 0;
+    const price = parseFloat(priceInput.value) || 0;
+    tr.querySelector('.row-total').textContent = (qty * price).toFixed(2);
+    recalcGrandTotal();
+  }
+
+  tr.querySelector('.remove-row').addEventListener('click', () => {
+    tr.remove();
+    recalcGrandTotal();
+  });
+
+  populateRef();
+  recalcRow();
+}
+
+// Membership discount preview - rate (tier vs. active premium, bigger
+// wins) is fetched per-customer; the actual Rs. amount is just rate% of
+// the live grand total, recomputed on every item change. This is a
+// preview only - the real order always re-resolves the discount
+// server-side off the items actually submitted (see routes/orders.py new()).
+let membershipRate = 0;
+let membershipLabel = null;
+
+// Points/Loyalty preview - balance + redeem rate are fetched per-customer;
+// the discount amount is (points the staff typed to redeem) / redeem_rate,
+// capped client-side by the fetched balance and by the remaining payable
+// amount (after the membership discount above) purely so the on-screen
+// preview doesn't show something impossible - the real order always
+// re-resolves/caps this server-side off the real balance at creation time
+// (see routes/orders.py new() / resolve_points_redemption()).
+let pointsBalance = 0;
+let pointsRedeemRate = 0;
+
+function recalcGrandTotal() {
+  let total = 0;
+  document.querySelectorAll('#items-body tr').forEach(tr => {
+    total += parseFloat(tr.querySelector('.row-total').textContent) || 0;
+  });
+  document.getElementById('grand-total').textContent = total.toFixed(2);
+
+  const discountRow = document.getElementById('membership-discount-row');
+  const discount = membershipRate > 0 ? total * membershipRate / 100 : 0;
+  if (discount > 0) {
+    document.getElementById('membership-label').textContent = membershipLabel || '';
+    document.getElementById('membership-discount-amount').textContent = discount.toFixed(2);
+    discountRow.classList.remove('hidden');
+  } else {
+    discountRow.classList.add('hidden');
+  }
+  const payableBeforePoints = Math.max(total - discount, 0);
+
+  const pointsDiscountRow = document.getElementById('points-discount-row');
+  let pointsUsed = parseFloat(document.getElementById('points-redeem-input').value) || 0;
+  pointsUsed = Math.max(0, Math.min(pointsUsed, pointsBalance));
+  let pointsDiscount = pointsRedeemRate > 0 ? pointsUsed / pointsRedeemRate : 0;
+  if (pointsDiscount > payableBeforePoints) {
+    pointsDiscount = payableBeforePoints;
+    pointsUsed = pointsDiscount * pointsRedeemRate;
+  }
+  if (pointsDiscount > 0) {
+    document.getElementById('points-used-label').textContent = pointsUsed.toFixed(pointsUsed % 1 ? 2 : 0);
+    document.getElementById('points-discount-amount').textContent = pointsDiscount.toFixed(2);
+    pointsDiscountRow.classList.remove('hidden');
+  } else {
+    pointsDiscountRow.classList.add('hidden');
+  }
+
+  document.getElementById('payable-total').textContent = (payableBeforePoints - pointsDiscount).toFixed(2);
+}
+
+document.getElementById('add-item-btn').addEventListener('click', addItemRow);
+addItemRow(); // start with one row
+
+// Prescription + membership loading based on customer selection
+const customerSelect = document.getElementById('customer_id');
+const prescriptionSelect = document.getElementById('prescription_id');
+
+function loadMembership(customerId) {
+  membershipRate = 0;
+  membershipLabel = null;
+  if (customerId) {
+    fetch(`/orders/customer/${customerId}/membership.json`)
+      .then(r => r.json())
+      .then(data => {
+        membershipRate = data.percent || 0;
+        membershipLabel = data.label;
+        recalcGrandTotal();
+      });
+  } else {
+    recalcGrandTotal();
+  }
+}
+
+function loadPoints(customerId) {
+  pointsBalance = 0;
+  pointsRedeemRate = 0;
+  const balanceRow = document.getElementById('points-balance-row');
+  const redeemInput = document.getElementById('points-redeem-input');
+  redeemInput.value = 0;
+  if (customerId) {
+    fetch(`/orders/customer/${customerId}/points.json`)
+      .then(r => r.json())
+      .then(data => {
+        pointsBalance = data.balance || 0;
+        pointsRedeemRate = data.redeem_rate || 0;
+        if (pointsBalance > 0) {
+          document.getElementById('points-balance').textContent = pointsBalance % 1 ? pointsBalance.toFixed(2) : pointsBalance.toFixed(0);
+          redeemInput.max = pointsBalance;
+          balanceRow.classList.remove('hidden');
+        } else {
+          balanceRow.classList.add('hidden');
+        }
+        recalcGrandTotal();
+      });
+  } else {
+    balanceRow.classList.add('hidden');
+    recalcGrandTotal();
+  }
+}
+document.getElementById('points-redeem-input').addEventListener('input', recalcGrandTotal);
+
+function loadPrescriptions(customerId) {
+  prescriptionSelect.innerHTML = '<option value="">-- No prescription selected --</option>';
+  if (!customerId) return;
+  fetch(`/orders/customer/${customerId}/prescriptions.json`)
+    .then(r => r.json())
+    .then(data => {
+      (data.prescriptions || []).forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = `${p.prescribed_date || ''} - OD ${p.od_sph}/${p.od_cyl}/${p.od_axis} | OS ${p.os_sph}/${p.os_cyl}/${p.os_axis}`;
+        prescriptionSelect.appendChild(opt);
+      });
+    });
+}
+customerSelect.addEventListener('change', () => { loadPrescriptions(customerSelect.value); loadMembership(customerSelect.value); loadPoints(customerSelect.value); });
+if (customerSelect.value) { loadPrescriptions(customerSelect.value); loadMembership(customerSelect.value); loadPoints(customerSelect.value); }
+
+// Rx mode toggle: existing prescription select vs inline new prescription
+const rxModeExisting = document.getElementById('rx-mode-existing');
+const rxModeNew = document.getElementById('rx-mode-new');
+const existingRxPanel = document.getElementById('existing-rx-panel');
+const newRxPanel = document.getElementById('new-rx-panel');
+
+function updateRxMode() {
+  if (rxModeNew.checked) {
+    existingRxPanel.classList.add('hidden');
+    newRxPanel.classList.remove('hidden');
+    prescriptionSelect.disabled = true;
+  } else {
+    existingRxPanel.classList.remove('hidden');
+    newRxPanel.classList.add('hidden');
+    prescriptionSelect.disabled = false;
+  }
+}
+rxModeExisting.addEventListener('change', updateRxMode);
+rxModeNew.addEventListener('change', updateRxMode);
+updateRxMode();
+
+initPrescriberPicker({
+  selectId: 'new_prescribed_by_select', addBtnId: 'add-prescriber-btn', rowId: 'new-prescriber-row',
+  inputId: 'new-prescriber-input', saveBtnId: 'save-prescriber-btn', cancelBtnId: 'cancel-prescriber-btn'
+});
+</script>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Categories{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Categories</h1>
+  <div class="page-actions">
+    <a href="{{ url_for('category_showcase.new') }}" class="btn btn-primary btn-small">+ Add Category</a>
+  </div>
+</div>
+
+<div class="panel">
+  <form method="GET" class="search-row" style="margin-bottom:16px;">
+    <input type="text" name="q" value="{{ q }}" placeholder="Search categories...">
+    <button type="submit" class="btn btn-secondary btn-small">Search</button>
+  </form>
+
+  {% if categories %}
+  <p class="muted">Only <strong>Active</strong> categories with an image appear in the storefront's "Shop by Category" section. This same list also powers the Category dropdown on Frame forms (Inventory &gt; Frames) - a category used by any frame cannot be deleted, only deactivated.</p>
+  <table class="table">
+    <thead><tr><th>Image</th><th>Name</th><th>Description</th><th>Order</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for c in categories %}
+    <tr>
+      <td>
+        {% if c['image_path'] %}
+        <div class="banner-thumb" style="width:60px;height:60px;"><img src="{{ url_for('static', filename=c['image_path']) }}" alt="{{ c['name'] }}"></div>
+        {% else %}
+        <span class="muted">-</span>
+        {% endif %}
+      </td>
+      <td>{{ c['name'] }}</td>
+      <td class="muted">{{ (c['description'] or '')[:60] }}{{ '...' if c['description'] and c['description']|length > 60 else '' }}</td>
+      <td>{{ c['display_order'] }}</td>
+      <td>
+        {% if c['is_active'] %}<span class="badge status-paid">Active</span>
+        {% else %}<span class="badge status-due">Inactive</span>{% endif %}
+      </td>
+      <td class="banner-row-actions">
+        <a href="{{ url_for('category_showcase.edit', category_id=c['id']) }}" class="btn btn-small btn-secondary">Edit</a>
+        <form method="POST" action="{{ url_for('category_showcase.toggle', category_id=c['id']) }}" style="display:inline" data-ajax-save>
+          <button type="submit" class="btn btn-small {{ 'btn-secondary' if c['is_active'] else 'btn-primary' }}">
+            {{ 'Deactivate' if c['is_active'] else 'Activate' }}
+          </button>
+        </form>
+        <form method="POST" action="{{ url_for('category_showcase.delete', category_id=c['id']) }}" style="display:inline" onsubmit="return confirm('Delete this category? This cannot be undone.');" data-ajax-save>
+          <button type="submit" class="btn btn-small btn-danger">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No categories yet - <a href="{{ url_for('category_showcase.new') }}">add the first one</a>.</p>
+  {% endif %}
+</div>
+{% endblock %}

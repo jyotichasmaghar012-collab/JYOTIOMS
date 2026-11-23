@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% from "_pagination.html" import render_pagination %}
+{% block title %}Contact Lenses{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Contact Lenses Inventory</h1>
+  <div class="page-actions">
+    <a href="{{ url_for('inventory.contacts_new') }}" class="btn btn-primary">+ Add Contact Lens</a>
+    <button type="button" class="btn btn-secondary" onclick="openProductGroupsModal()">Product Groups</button>
+  </div>
+</div>
+{% include "_product_groups_modal.html" %}
+<div class="panel">
+<form method="GET" class="inline-filter-form" style="margin-bottom:14px; display:flex; align-items:center; gap:8px;">
+  <label for="gender-filter" style="margin:0;">Filter by Gender:</label>
+  <select id="gender-filter" name="gender" onchange="this.form.submit()">
+    <option value="" {{ 'selected' if not gender_filter else '' }}>All</option>
+    {% for g in gender_values %}
+    <option value="{{ g }}" {{ 'selected' if gender_filter == g else '' }}>{{ g }}</option>
+    {% endfor %}
+  </select>
+  {% if gender_filter %}<a href="{{ url_for('inventory.contacts_index') }}" class="btn btn-small btn-secondary">Clear</a>{% endif %}
+</form>
+{% if contacts %}
+<table class="table">
+  <thead><tr><th>Brand</th><th>Type</th><th>Power</th><th>Gender</th>{% if all_branches_view %}<th>Branch</th>{% endif %}<th>Selling Price</th><th>Stock</th><th></th></tr></thead>
+  <tbody>
+  {% for cl in contacts %}
+    <tr class="{{ 'row-low-stock' if cl['stock_qty'] <= cl['low_stock_threshold'] else '' }}">
+      <td>{{ cl['brand'] }}</td>
+      <td>{{ cl['lens_type'] }}</td>
+      <td>{{ cl['power'] }}</td>
+      <td>{{ cl['gender'] or 'Unisex' }}</td>
+      {% if all_branches_view %}<td>{{ get_branch_name(cl['branch_id']) or '-' }}</td>{% endif %}
+      <td>Rs. {{ "%.2f"|format(cl['selling_price']) }}</td>
+      <td>{{ cl['stock_qty'] }}{% if cl['stock_qty'] <= cl['low_stock_threshold'] %} <span class="badge status-low">LOW</span>{% endif %}</td>
+      <td>
+        <a href="{{ url_for('inventory.contacts_edit', item_id=cl['id']) }}" class="btn btn-small">Edit</a>
+        {% if current_user.role == 'admin' %}
+        <form method="POST" action="{{ url_for('inventory.contacts_delete', item_id=cl['id']) }}" style="display:inline" onsubmit="return confirm('Delete this item?');" data-ajax-save>
+          <button type="submit" class="btn btn-small btn-danger">Delete</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{{ render_pagination(page, total_pages, total, page_url) }}
+{% else %}
+<p class="empty">No contact lenses added yet.</p>
+{% endif %}
+</div>
+{% endblock %}

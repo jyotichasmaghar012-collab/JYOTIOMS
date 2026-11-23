@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Frame Barcodes - Print</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/JsBarcode/3.11.5/JsBarcode.all.min.js"></script>
+<style>
+  :root {
+    --label-w: 50mm;
+    --label-h: 25mm;
+  }
+  body { font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 16px; background: #f3f4f6; }
+  .toolbar {
+    margin-bottom: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px;
+    background: #fff;
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+  }
+  .toolbar button {
+    background: #2563eb; color: #fff; border: none; padding: 10px 18px;
+    border-radius: 6px; font-size: 14px; cursor: pointer;
+  }
+  .size-controls { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #374151; }
+  .size-controls select, .size-controls input {
+    padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px;
+  }
+  .size-controls input[type=number] { width: 64px; }
+  .custom-size-fields { display: none; align-items: center; gap: 8px; }
+  .custom-size-fields.visible { display: flex; }
+
+  .label-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, var(--label-w));
+    gap: 10px;
+    justify-content: start;
+  }
+  .label {
+    background: #fff;
+    border: 1px dashed #9ca3af;
+    border-radius: 6px;
+    padding: 8px 6px;
+    text-align: center;
+    width: var(--label-w);
+    min-height: var(--label-h);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .label .brand { font-weight: 700; font-size: 13px; }
+  .label .meta { font-size: 11px; color: #4b5563; margin: 2px 0; }
+  .label .price { font-weight: 700; font-size: 13px; margin-top: 2px; }
+  .label svg { max-width: 100%; }
+  .empty { padding: 40px; text-align: center; color: #6b7280; }
+
+  @media print {
+    body { background: #fff; padding: 0; }
+    .toolbar { display: none; }
+    .label-grid { grid-template-columns: repeat(auto-fill, var(--label-w)); }
+    .label { border: 1px solid #000; break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+  <div class="toolbar">
+    <button onclick="window.print()">🖨 Print Barcodes</button>
+    <div class="size-controls">
+      <label for="size-preset">Label Size:</label>
+      <select id="size-preset">
+        <option value="40x20">Small - 40mm x 20mm</option>
+        <option value="50x25" selected>Medium - 50mm x 25mm (default)</option>
+        <option value="60x30">Large - 60mm x 30mm</option>
+        <option value="custom">Custom size</option>
+      </select>
+      <div class="custom-size-fields" id="custom-size-fields">
+        <input type="number" id="custom-w" min="15" max="150" value="50"> mm wide
+        <input type="number" id="custom-h" min="10" max="100" value="25"> mm tall
+        <button type="button" id="apply-custom-size">Apply</button>
+      </div>
+    </div>
+  </div>
+
+  {% if labels %}
+  <div class="label-grid" id="label-grid">
+    {% for l in labels %}
+    <div class="label">
+      <div class="brand">{{ l.brand }} {{ l.model }}</div>
+      <div class="meta">{{ l.color }}{% if l.color and l.size %} / {% endif %}{{ l.size }}</div>
+      <svg class="barcode-svg" data-code="{{ l.code }}"></svg>
+      <div class="meta">{{ l.code }}</div>
+      <div class="price">{{ currency }} {{ "%.2f"|format(l.price) }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty">No frames found to print.</p>
+  {% endif %}
+
+  <script>
+    function renderBarcodes() {
+      document.querySelectorAll(".barcode-svg").forEach(function (el) {
+        JsBarcode(el, el.dataset.code, {
+          format: "CODE128",
+          displayValue: false,
+          width: 1.6,
+          height: 40,
+          margin: 4,
+        });
+      });
+    }
+    renderBarcodes();
+
+    function setLabelSize(widthMm, heightMm) {
+      document.documentElement.style.setProperty("--label-w", widthMm + "mm");
+      document.documentElement.style.setProperty("--label-h", heightMm + "mm");
+    }
+
+    const PRESETS = {
+      "40x20": [40, 20],
+      "50x25": [50, 25],
+      "60x30": [60, 30],
+    };
+
+    const presetSelect = document.getElementById("size-preset");
+    const customFields = document.getElementById("custom-size-fields");
+    const customW = document.getElementById("custom-w");
+    const customH = document.getElementById("custom-h");
+
+    presetSelect.addEventListener("change", function () {
+      if (this.value === "custom") {
+        customFields.classList.add("visible");
+        setLabelSize(customW.value, customH.value);
+      } else {
+        customFields.classList.remove("visible");
+        const [w, h] = PRESETS[this.value];
+        setLabelSize(w, h);
+      }
+    });
+
+    document.getElementById("apply-custom-size").addEventListener("click", function () {
+      setLabelSize(customW.value || 50, customH.value || 25);
+    });
+  </script>
+</body>
+</html>

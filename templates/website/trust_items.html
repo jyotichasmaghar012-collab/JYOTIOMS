@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Trust & Benefits{% endblock %}
+{% block content %}
+<div class="page-header"><h1>Trust &amp; Benefits</h1></div>
+
+<div class="panel">
+  <p class="muted">Small icon+title+text tiles shown near the bottom of the homepage (e.g. "Free Home Delivery", "100% Genuine Products"). Only <strong>Active</strong> items are visible.</p>
+
+  <form method="POST" action="{{ url_for('content_sections.trust_items_new') }}" class="attr-add-form" data-ajax-save>
+    <input type="text" name="icon" placeholder="Icon (emoji, e.g. 🚚)" maxlength="10" style="max-width:120px;">
+    <input type="text" name="title" placeholder="Title" required maxlength="80">
+    <input type="text" name="text" placeholder="Short text (optional)" maxlength="200">
+    <button type="submit" class="btn btn-primary btn-small">+ Add</button>
+  </form>
+
+  {% if items %}
+  <table class="table">
+    <thead><tr><th>Icon</th><th>Title</th><th>Text</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for item in items %}
+    <tr>
+      <td colspan="3">
+        <form method="POST" action="{{ url_for('content_sections.trust_items_edit', item_id=item['id']) }}" class="attr-inline-edit-form" data-ajax-save style="display:flex; gap:8px; flex-wrap:wrap;">
+          <input type="text" name="icon" value="{{ item['icon'] or '' }}" maxlength="10" style="max-width:80px;">
+          <input type="text" name="title" value="{{ item['title'] }}" maxlength="80" required style="max-width:160px;">
+          <input type="text" name="text" value="{{ item['text'] or '' }}" maxlength="200" style="flex:1; min-width:160px;">
+          <button type="submit" class="btn btn-small btn-secondary">Save</button>
+        </form>
+      </td>
+      <td>
+        {% if item['is_active'] %}<span class="badge status-paid">Active</span>
+        {% else %}<span class="badge status-due">Inactive</span>{% endif %}
+      </td>
+      <td class="banner-row-actions">
+        <form method="POST" action="{{ url_for('content_sections.trust_items_toggle', item_id=item['id']) }}" style="display:inline" data-ajax-save>
+          <button type="submit" class="btn btn-small {{ 'btn-secondary' if item['is_active'] else 'btn-primary' }}">
+            {{ 'Deactivate' if item['is_active'] else 'Activate' }}
+          </button>
+        </form>
+        <form method="POST" action="{{ url_for('content_sections.trust_items_delete', item_id=item['id']) }}" style="display:inline" onsubmit="return confirm('Delete this item?');" data-ajax-save>
+          <button type="submit" class="btn btn-small btn-danger">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No trust items yet - add the first one above.</p>
+  {% endif %}
+</div>
+{% endblock %}

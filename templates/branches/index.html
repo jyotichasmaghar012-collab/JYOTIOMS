@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Branches{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Branches</h1>
+  <div class="page-actions">
+    <a href="{{ url_for('branches.new') }}" class="btn btn-primary">+ New Branch</a>
+  </div>
+</div>
+<div class="panel">
+{% if branches %}
+<table class="table">
+  <thead><tr><th>Name</th><th>Address</th><th>Phone</th><th>Staff</th><th>Frames</th><th>Orders</th><th></th></tr></thead>
+  <tbody>
+  {% for row in branches %}
+    <tr>
+      <td>{{ row.branch['name'] }}</td>
+      <td>{{ row.branch['address'] or '-' }}</td>
+      <td>{{ row.branch['phone'] or '-' }}</td>
+      <td>{{ row.staff_count }}</td>
+      <td>{{ row.frame_count }}</td>
+      <td>{{ row.order_count }}</td>
+      <td><a href="{{ url_for('branches.edit', branch_id=row.branch['id']) }}" class="btn btn-small btn-secondary">Edit</a></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">No branches yet.</p>
+{% endif %}
+</div>
+<p class="empty" style="margin-top:12px;">When creating new staff (Settings &gt; Staff Users), assign them to a branch - that staff member will only be able to view/manage data for that branch. You (Admin) can pick any branch from the top of the sidebar and work within it, or pick "All Branches" to see a combined report of everything.</p>
+{% endblock %}

@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit Banner' if banner else 'Add Banner' }}{% endblock %}
+{% block content %}
+{% set f = form if form else banner %}
+{% macro val(name, default='') %}{{ (form.get(name, default) if form else (banner[name] if banner and banner[name] is not none else default)) }}{% endmacro %}
+<div class="page-header">
+  <h1>{{ 'Edit Banner' if banner else 'Add Banner' }}</h1>
+  <div class="page-actions">
+    <a href="{{ url_for('banners.index') }}" class="btn btn-small btn-secondary">Back to Banners</a>
+  </div>
+</div>
+
+<div class="panel form-panel">
+<form method="POST" enctype="multipart/form-data" data-ajax-save>
+  <label>Banner Title * <span class="muted" style="font-weight:400;">(admin-facing label only, not shown to customers)</span></label>
+  <input type="text" name="title" required value="{{ val('title') }}">
+
+  <div class="form-row">
+    <div>
+      <label>Desktop Banner Image {{ '*' if not banner else '' }}</label>
+      {% if banner and banner['desktop_image_path'] %}
+      <div class="product-photo-preview"><img src="{{ url_for('static', filename=banner['desktop_image_path']) }}" alt=""></div>
+      {% endif %}
+      <input type="file" name="desktop_image" accept="image/png,image/jpeg,image/webp" {{ 'required' if not banner else '' }}>
+      <p class="field-hint">JPG, PNG or WEBP. Recommended size 1920&times;700 or 1920&times;800 (wide/landscape) - larger uploads are automatically resized. The banner displays at up to 530px tall and crops to fit, keeping the center of the image in view, so keep the main subject centered.</p>
+    </div>
+    <div>
+      <label>Mobile Banner Image (optional)</label>
+      {% if banner and banner['mobile_image_path'] %}
+      <div class="product-photo-preview"><img src="{{ url_for('static', filename=banner['mobile_image_path']) }}" alt=""></div>
+      <label class="checkbox-label"><input type="checkbox" name="remove_mobile_image" value="1"> Remove mobile image</label>
+      {% endif %}
+      <input type="file" name="mobile_image" accept="image/png,image/jpeg,image/webp">
+      <p class="field-hint">Optional - if left blank, a mobile-optimized crop is generated automatically from the desktop image (centered, resized for fast loading on phones).</p>
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div>
+      <label>Heading</label>
+      <input type="text" name="heading" value="{{ val('heading') }}" placeholder="e.g. JYOTI CHASMA GHAR">
+    </div>
+    <div>
+      <label>Sub Heading</label>
+      <input type="text" name="subheading" value="{{ val('subheading') }}" placeholder="e.g. Order glasses and contact lenses online now">
+    </div>
+  </div>
+  <div class="form-row">
+    <div>
+      <label>Button Text</label>
+      <input type="text" name="button_text" value="{{ val('button_text') }}" placeholder="e.g. Start Shopping">
+    </div>
+    <div>
+      <label>Button URL</label>
+      <input type="text" name="button_url" value="{{ val('button_url') }}" placeholder="e.g. /store/#store-catalog">
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div>
+      <label class="checkbox-label">
+        <input type="checkbox" name="overlay_enabled" value="1" {{ 'checked' if (form.get('overlay_enabled') if form else (banner is none or banner['overlay_enabled'])) else '' }}>
+        Show dark overlay behind text (improves readability on busy images)
+      </label>
+    </div>
+    <div>
+      <label class="checkbox-label">
+        <input type="checkbox" name="is_active" value="1" {{ 'checked' if (form.get('is_active') if form else (banner is none or banner['is_active'])) else '' }}>
+        Active (visible on the homepage)
+      </label>
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div>
+      <label>Display Order</label>
+      <input type="number" name="display_order" value="{{ val('display_order', 0) if banner else 0 }}">
+      <p class="field-hint">Lower numbers show first. If this number is already used, later banners shift down automatically.</p>
+    </div>
+    <div></div>
+  </div>
+
+  <div class="form-row">
+    <div>
+      <label>Start Date (optional)</label>
+      <input type="date" name="start_date" value="{{ val('start_date') }}">
+    </div>
+    <div>
+      <label>End Date (optional)</label>
+      <input type="date" name="end_date" value="{{ val('end_date') }}">
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a href="{{ url_for('banners.index') }}" class="btn btn-secondary">Cancel</a>
+  </div>
+</form>
+</div>
+{% endblock %}

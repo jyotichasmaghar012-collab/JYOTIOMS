@@ -1,0 +1,142 @@
+{% extends "store/base.html" %}
+{% block title %}My Account - {{ shop_name }}{% endblock %}
+{% block store_content %}
+<h1>My Account</h1>
+<p>{{ online_customer['name'] }} &middot; {{ online_customer['phone'] }}</p>
+<div class="form-actions">
+  <a href="{{ url_for('store.home') }}" class="btn btn-secondary">Home</a>
+  <a href="{{ url_for('store.logout') }}" class="btn btn-secondary">Logout</a>
+</div>
+
+<h2 class="section-title">My Orders</h2>
+{% if not orders %}
+<p class="store-empty">You haven't placed any online orders yet.</p>
+{% else %}
+<table class="table">
+  <thead><tr><th>Order No.</th><th>Date</th><th>Status</th><th>Payment</th></tr></thead>
+  <tbody>
+  {% for o in orders %}
+    <tr>
+      <td><a href="{{ url_for('store.order_confirmation', order_no=o['order_no']) }}">{{ o['order_no'] }}</a></td>
+      <td>{{ o['order_date'] }}</td>
+      <td>{{ o['status'] }}</td>
+      <td>{{ 'COD' if o['payment_method'] == 'cod' else (o['online_payment_status'] or '') }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<h2 class="section-title">My Membership</h2>
+<div class="store-coupon-box store-membership-box">
+  <p><strong>{{ membership_tier.name if membership_tier else 'Silver' }} Tier</strong>{% if membership_tier and membership_tier.discount_percent %} - {{ membership_tier.discount_percent|int }}% off every order{% endif %}</p>
+  <p class="field-hint">Lifetime spend: {{ currency }} {{ '%.0f'|format(membership_spend) }}</p>
+  {% if membership_next_tier %}
+  <p class="field-hint">Spend {{ currency }} {{ '%.0f'|format(membership_next_tier.min_spend - membership_spend) }} more to reach <strong>{{ membership_next_tier.name }}</strong> ({{ membership_next_tier.discount_percent|int }}% off).</p>
+  {% endif %}
+
+  {% if membership_premium %}
+  <div class="store-coupon-applied" style="margin-top:10px;">
+    <span>You're a <strong>{{ membership_premium.plan_name }}</strong> member ({{ membership_premium.plan_discount_percent|int }}% off every order) until {{ membership_premium.expires_at }}.</span>
+  </div>
+  {% elif membership_pending %}
+  <p class="field-hint" style="margin-top:10px;">Your request for <strong>{{ membership_pending.plan_name }}</strong> membership is pending - we'll activate it once payment is confirmed.</p>
+  {% elif membership_plans %}
+  <form method="POST" action="{{ url_for('store.request_premium') }}" style="display:flex; gap:8px; align-items:center; margin-top:10px; flex-wrap:wrap;">
+    <select name="plan_id" required>
+      {% for p in membership_plans %}
+      <option value="{{ p['id'] }}">{{ p['name'] }} - {{ currency }} {{ '%.0f'|format(p['price']) }}/{{ (p['duration_days'] / 365)|round(1) }}yr ({{ p['discount_percent']|int }}% off)</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-small btn-primary">Request Premium</button>
+  </form>
+  {% if membership_plans[0]['benefits'] %}
+  <p class="field-hint" style="margin-top:6px; white-space:pre-line;">{{ membership_plans[0]['benefits'] }}</p>
+  {% endif %}
+  {% endif %}
+</div>
+
+<h2 class="section-title">My Points</h2>
+<div class="store-coupon-box store-membership-box">
+  <p><strong>{{ points_balance|round(2) if points_balance % 1 else points_balance|int }} points</strong> available to redeem on your next order.</p>
+  {% if membership_premium %}
+  <p class="field-hint">You earn points on every order as a {{ membership_premium.plan_name }} member - redeem them for a discount at checkout starting from your next order.</p>
+  {% else %}
+  <p class="field-hint">Points are earned on orders while you're an active Premium member. Become a Premium member above to start earning.</p>
+  {% endif %}
+</div>
+
+<h2 class="section-title" id="wishlist">My Wishlist</h2>
+{% if not wishlist_products %}
+<p class="store-empty">You haven't saved anything yet. Tap the &hearts; icon on any product to save it here.</p>
+{% else %}
+<div class="store-wishlist-list">
+  {% for item in wishlist_products %}
+  {% set product = item.product %}
+  <div class="store-wishlist-item" data-item-type="{{ item.item_type }}" data-item-id="{{ item.item_id }}">
+    <a href="{{ url_for('store.product_detail', item_type=item.item_type, item_id=item.item_id) }}" class="store-wishlist-item-img">
+      {% if product['image_path'] %}
+      <img src="{{ url_for('static', filename=product['image_path']) }}" alt="{{ product['brand'] }}">
+      {% else %}
+      <span class="store-card-noimg">📷</span>
+      {% endif %}
+    </a>
+    <div class="store-wishlist-item-info">
+      <a href="{{ url_for('store.product_detail', item_type=item.item_type, item_id=item.item_id) }}" class="store-wishlist-item-title">
+        {{ product['brand'] }}{% if item.item_type == 'frame' and product['model'] %} {{ product['model'] }}{% endif %}
+      </a>
+      <div class="store-wishlist-item-price">{{ currency }} {{ '%.0f'|format(product['selling_price']) }}</div>
+      {% if product['stock_qty'] <= 0 %}<div class="store-wishlist-item-oos">Out of Stock</div>{% endif %}
+    </div>
+    <div class="store-wishlist-item-actions">
+      {% if product['stock_qty'] > 0 %}
+      <form method="POST" action="{{ url_for('store.cart_add') }}">
+        <input type="hidden" name="item_type" value="{{ item.item_type }}">
+        <input type="hidden" name="item_id" value="{{ item.item_id }}">
+        <input type="hidden" name="next" value="{{ url_for('store.account') }}#wishlist">
+        <button type="submit" class="btn btn-small btn-primary">Add to Cart</button>
+      </form>
+      {% endif %}
+      <button type="button" class="btn btn-small btn-secondary store-wishlist-remove-btn">Remove</button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+<script>
+(function () {
+  var TOGGLE_URL = "{{ url_for('store.wishlist_toggle') }}";
+  document.querySelectorAll(".store-wishlist-remove-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var row = btn.closest(".store-wishlist-item");
+      if (!row) return;
+      btn.disabled = true;
+      var body = "item_type=" + encodeURIComponent(row.dataset.itemType) + "&item_id=" + encodeURIComponent(row.dataset.itemId);
+      fetch(TOGGLE_URL, {
+        method: "POST",
+        headers: { "X-Requested-With": "XMLHttpRequest", "Content-Type": "application/x-www-form-urlencoded" },
+        body: body,
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data && data.ok) row.remove();
+        })
+        .finally(function () { btn.disabled = false; });
+    });
+  });
+})();
+</script>
+{% endif %}
+
+{% if reviewable %}
+<h2 class="section-title">Review Your Purchases</h2>
+<p class="muted">You've received these products - share your experience with other shoppers.</p>
+<div class="store-reviewable-list">
+  {% for item in reviewable %}
+  <div class="store-reviewable-item">
+    <span>{{ item.description }}</span>
+    <a href="{{ url_for('store.product_detail', item_type=item.item_type, item_id=item.item_id) }}#write-review" class="btn btn-small btn-primary">Review Product</a>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "store/base.html" %}
+{% block title %}Login - {{ shop_name }}{% endblock %}
+{% block store_content %}
+<div class="store-auth-wrap">
+<div class="store-auth-card">
+  <h1>Welcome Back</h1>
+  <p class="store-auth-subtitle">Login to view your orders and account details</p>
+  <form method="POST">
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+    <label>Phone Number</label>
+    <input type="tel" name="phone" placeholder="Enter your phone number" required autofocus>
+    <label>Password</label>
+    <input type="password" name="password" placeholder="Enter your password" required>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary btn-block">Login</button>
+    </div>
+  </form>
+  <p class="hint">New here? <a href="{{ url_for('store.signup') }}">Create an account</a></p>
+</div>
+</div>
+{% endblock %}

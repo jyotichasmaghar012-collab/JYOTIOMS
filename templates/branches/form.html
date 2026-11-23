@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit Branch' if branch else 'New Branch' }}{% endblock %}
+{% block content %}
+<div class="page-header"><h1>{{ 'Edit Branch' if branch else 'New Branch' }}</h1></div>
+<div class="panel form-panel">
+<form method="POST" data-ajax-save>
+  <label>Branch Name *</label>
+  <input type="text" name="name" required value="{{ branch['name'] if branch else '' }}" placeholder="e.g. Andheri Branch">
+  <label>Address</label>
+  <textarea name="address" rows="2">{{ branch['address'] if branch else '' }}</textarea>
+  <label>Phone</label>
+  <input type="text" name="phone" value="{{ branch['phone'] if branch else '' }}">
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a href="{{ url_for('branches.index') }}" class="btn btn-secondary">Cancel</a>
+  </div>
+</form>
+</div>
+{% endblock %}

@@ -1,0 +1,137 @@
+{% extends "store/base.html" %}
+{% block title %}Cart - {{ shop_name }}{% endblock %}
+{% block store_content %}
+<h1>Your Cart</h1>
+{% if not items %}
+<p class="store-empty">Your cart is empty. <a href="{{ url_for('store.home') }}">Start shopping</a>.</p>
+{% else %}
+<table class="table store-cart-table">
+  <thead><tr><th></th><th>Item</th><th>Price</th><th>Qty</th><th>Total</th><th></th></tr></thead>
+  <tbody>
+  {% for it in items %}
+    <tr>
+      <td class="store-cart-thumb">
+        {% if it.image_path %}<img src="{{ url_for('static', filename=it.image_path) }}" alt="">{% endif %}
+      </td>
+      <td>{{ it.label }}</td>
+      <td>{{ currency }} {{ '%.0f'|format(it.price) }}</td>
+      <td>
+        <form method="POST" action="{{ url_for('store.cart_update') }}" class="store-qty-form">
+          <input type="hidden" name="item_type" value="{{ it.item_type }}">
+          <input type="hidden" name="item_id" value="{{ it.item_id }}">
+          <input type="number" name="qty" value="{{ it.qty }}" min="1" max="{{ it.stock_qty }}" step="1" class="store-qty-input">
+        </form>
+      </td>
+      <td>{{ currency }} {{ '%.0f'|format(it.total) }}</td>
+      <td>
+        <form method="POST" action="{{ url_for('store.cart_remove') }}">
+          <input type="hidden" name="item_type" value="{{ it.item_type }}">
+          <input type="hidden" name="item_id" value="{{ it.item_id }}">
+          <button type="submit" class="btn btn-small btn-danger">Remove</button>
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<div class="store-coupon-box">
+  {% if coupon %}
+  <div class="store-coupon-applied">
+    <span>Coupon <strong>{{ coupon.code }}</strong> applied - you saved {{ currency }} {{ '%.2f'|format(discount_amount) }}.</span>
+    <form method="POST" action="{{ url_for('store.cart_remove_coupon') }}" data-ajax-save>
+      <button type="submit" class="btn btn-small btn-secondary">Remove Coupon</button>
+    </form>
+  </div>
+  {% else %}
+  <form method="POST" action="{{ url_for('store.cart_apply_coupon') }}" class="store-coupon-form" data-ajax-save>
+    <input type="text" name="coupon_code" placeholder="Enter coupon code" style="text-transform:uppercase" maxlength="40">
+    <button type="submit" class="btn btn-small btn-primary">Apply Coupon</button>
+  </form>
+  {% endif %}
+</div>
+
+{% if membership_discount %}
+<div class="store-coupon-box">
+  <div class="store-coupon-applied">
+    <span>
+      {% if membership_premium %}Your <strong>{{ membership_premium.plan_name }}</strong> membership discount{% else %}Your <strong>{{ membership_tier.name }}</strong> tier discount{% endif %}
+      applied automatically - you saved {{ currency }} {{ '%.2f'|format(membership_discount) }}.
+    </span>
+  </div>
+</div>
+{% endif %}
+
+{% if online_customer and points_balance %}
+<div class="store-coupon-box">
+  {% if points_used %}
+  <div class="store-coupon-applied">
+    <span>Redeeming <strong>{{ points_used|round(2) if points_used % 1 else points_used|int }}</strong> points - you saved {{ currency }} {{ '%.2f'|format(points_discount) }}.</span>
+    <form method="POST" action="{{ url_for('store.cart_remove_points') }}" data-ajax-save>
+      <button type="submit" class="btn btn-small btn-secondary">Remove</button>
+    </form>
+  </div>
+  {% else %}
+  <form method="POST" action="{{ url_for('store.cart_apply_points') }}" class="store-coupon-form" data-ajax-save>
+    <span class="field-hint" style="margin-right:8px;">You have {{ points_balance|round(2) if points_balance % 1 else points_balance|int }} points available.</span>
+    <input type="number" name="points_redeem" placeholder="Points to redeem" min="1" max="{{ points_balance|int }}" style="max-width:150px;">
+    <button type="submit" class="btn btn-small btn-primary">Redeem Points</button>
+  </form>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="order-grand-total">
+  {% if coupon or membership_discount or points_discount %}
+  <div class="store-cart-subtotal">Subtotal: {{ currency }} {{ '%.0f'|format(grand_total) }}</div>
+  {% if coupon %}
+  <div class="store-cart-discount">Discount ({{ coupon.code }}): -{{ currency }} {{ '%.2f'|format(discount_amount) }}</div>
+  {% endif %}
+  {% if membership_discount %}
+  <div class="store-cart-discount">{% if membership_premium %}{{ membership_premium.plan_name }} Membership{% else %}{{ membership_tier.name }} Tier{% endif %} Discount: -{{ currency }} {{ '%.2f'|format(membership_discount) }}</div>
+  {% endif %}
+  {% if points_discount %}
+  <div class="store-cart-discount">Points Discount ({{ points_used|round(2) if points_used % 1 else points_used|int }} pts): -{{ currency }} {{ '%.2f'|format(points_discount) }}</div>
+  {% endif %}
+  {% endif %}
+  Total: {{ currency }} {{ '%.0f'|format(payable_total) }}
+</div>
+<div class="form-actions">
+  <a href="{{ url_for('store.home') }}" class="btn btn-secondary">Continue Shopping</a>
+  <a href="{{ url_for('store.checkout') }}" class="btn btn-primary">Checkout</a>
+</div>
+{% endif %}
+<script>
+// Frontend guard: quantity must never go below 1. The backend
+// (POST /store/cart/update) independently rejects/resets any qty < 1 too,
+// so this cannot be bypassed by disabling JS or editing the request by hand.
+document.querySelectorAll(".store-qty-input").forEach(function (input) {
+  function clampToMinimum() {
+    var value = parseInt(input.value, 10);
+    if (isNaN(value) || value < 1) {
+      input.value = 1;
+    }
+  }
+  // Typing "0", a negative number, or clearing the field snaps back to 1.
+  input.addEventListener("input", clampToMinimum);
+  // Submit the update once the user leaves the field or uses the spinner,
+  // after making sure the value is valid.
+  input.addEventListener("change", function () {
+    clampToMinimum();
+    input.form.submit();
+  });
+  // Block typing a literal minus sign so a negative number can't be entered.
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "-" || e.key === "Minus" || e.key === "Subtract") {
+      e.preventDefault();
+    }
+  });
+});
+</script>
+
+{% include "store/_recommendations.html" %}
+{% endblock %}
+
+{% block scripts %}
+{% include "store/_recommendations_scripts.html" %}
+{% endblock %}

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Staff Users{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Staff Users</h1>
+  <div class="page-actions">
+    <a href="{{ url_for('settings.users_new') }}" class="btn btn-primary">+ Add Staff</a>
+  </div>
+</div>
+<div class="panel">
+<table class="table">
+  <thead><tr><th>Full Name</th><th>Username</th><th>Role</th><th>Branch</th><th>Access</th><th>Status</th><th>Added</th><th></th></tr></thead>
+  <tbody>
+  {% for u in users %}
+    <tr>
+      <td>{{ u['full_name'] }}</td>
+      <td>{{ u['username'] }}</td>
+      <td>{{ u['role'] }}</td>
+      <td>
+        {% if u['role'] == 'admin' %}
+        All Branches
+        {% else %}
+        <form method="POST" action="{{ url_for('settings.users_set_branch', user_id=u['id']) }}" style="display:inline" data-ajax-save>
+          <select name="branch_id" onchange="this.form.requestSubmit()">
+            <option value="">-- None --</option>
+            {% for b in all_branches %}
+            <option value="{{ b['id'] }}" {{ 'selected' if u['branch_id'] == b['id'] else '' }}>{{ b['name'] }}</option>
+            {% endfor %}
+          </select>
+        </form>
+        {% endif %}
+      </td>
+      <td>
+        {% if u['role'] == 'admin' %}
+        <span class="muted">Full Access</span>
+        {% else %}
+        <div class="permission-badges">
+          {% set perms = (u['permissions'] or '').split(',') if u['permissions'] else [] %}
+          {% for p in perms %}
+            {% if p %}<span class="permission-badge">{{ permission_labels.get(p, p) }}</span>{% endif %}
+          {% endfor %}
+          {% if not perms|select|list %}<span class="empty">No access</span>{% endif %}
+        </div>
+        {% endif %}
+      </td>
+      <td>{{ 'Active' if u['active'] else 'Inactive' }}</td>
+      <td>{{ u['created_at'][:10] }}</td>
+      <td>
+        <form method="POST" action="{{ url_for('settings.users_toggle', user_id=u['id']) }}" style="display:inline" data-ajax-save>
+          <button type="submit" class="btn btn-small">{{ 'Deactivate' if u['active'] else 'Activate' }}</button>
+        </form>
+        {% if u['role'] != 'admin' %}
+        <a href="{{ url_for('settings.users_edit_permissions', user_id=u['id']) }}" class="btn btn-small">Edit Access</a>
+        {% endif %}
+        <button type="button" class="btn btn-small" onclick="document.getElementById('reset-{{ u['id'] }}').classList.toggle('hidden')">Reset Password</button>
+        <div id="reset-{{ u['id'] }}" class="hidden inline-reset">
+          <form method="POST" action="{{ url_for('settings.users_reset_password', user_id=u['id']) }}" data-ajax-save>
+            <input type="password" name="password" placeholder="New password" required>
+            <button type="submit" class="btn btn-small btn-primary">Set</button>
+          </form>
+        </div>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

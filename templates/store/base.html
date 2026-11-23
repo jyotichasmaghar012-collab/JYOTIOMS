@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+{% block bare_content %}
+{% set nav_active =
+  'Eyeglasses' if (request.endpoint == 'store.home' and request.args.get('cat') == 'Eyeglasses') else
+  'Sunglasses' if (request.endpoint == 'store.home' and request.args.get('cat') == 'Sunglasses') else
+  'contact_lens' if (request.endpoint == 'store.home' and request.args.get('cat') == 'contact_lens') else
+  'track' if request.endpoint == 'store.track' else
+  'find_store' if request.endpoint == 'store.find_a_store' else
+  'home' if (request.endpoint == 'store.home' and not request.args.get('q')) else '' %}
+<div class="store-shell">
+
+  <div class="store-topbar">
+    <div class="store-container store-topbar-inner">
+      <span class="store-topbar-msg">{{ store_tagline or 'Order glasses and contact lenses online now' }}</span>
+      <nav class="store-topbar-nav">
+        {% if shop_phone %}
+        <a href="tel:{{ shop_phone }}" class="store-topbar-phone">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          {{ shop_phone }}
+        </a>
+        {% endif %}
+        <a href="{{ url_for('store.find_a_store') }}" class="store-topbar-findstore">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          Find a Store
+        </a>
+        <a href="{{ url_for('store.track') }}">Track Order</a>
+      </nav>
+    </div>
+  </div>
+
+  <div class="store-sticky-header" id="storeStickyHeader">
+    <header class="store-header">
+      <div class="store-container store-header-inner">
+        {# Restored original layout per user feedback: logo pinned left,
+           a full search bar inline in the header (center, flexible width),
+           actions pinned right. The icon-toggle search button only
+           reappears at mobile widths, where the inline bar hides and
+           #storeMobileSearchBar (below) takes over instead. #}
+        <div class="store-header-left">
+          <button type="button" class="store-hamburger" id="storeHamburgerBtn" aria-label="Open menu" aria-expanded="false" aria-controls="storeMobileDrawer">
+            <svg class="icon-hamburger" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <a href="{{ url_for('store.home') }}" class="store-brand" aria-label="{{ shop_name }} - Home">
+            {% if shop_logo %}
+            <img src="{{ url_for('static', filename=shop_logo) }}" alt="{{ shop_name }}" class="store-logo">
+            {% else %}
+            <span class="store-logo-fallback">{{ (shop_name or '?')[:1] }}</span>
+            {% endif %}
+          </a>
+        </div>
+
+        <form method="GET" action="{{ url_for('store.home') }}" class="store-search-form store-header-search" role="search">
+          <svg class="store-search-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" name="q" placeholder="Search frames, sunglasses, contact lenses..." value="{{ search_query or '' }}">
+          {% if gender is defined and gender and gender != 'all' %}<input type="hidden" name="gender" value="{{ gender }}">{% endif %}
+          <button type="submit" aria-label="Search">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </button>
+        </form>
+
+        <div class="store-header-actions">
+          <button type="button" class="store-search-toggle" id="storeMobileSearchBtn" aria-label="Search" aria-expanded="false" aria-controls="storeMobileSearchBar">
+            <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </button>
+          <a href="{{ url_for('store.home') }}" class="store-action-link">
+            <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+            <span>Home</span>
+          </a>
+          {% if online_customer %}
+          <a href="{{ url_for('store.account') }}" class="store-action-link store-action-greeting">
+            <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
+            <span>Hi, {{ online_customer['name'].split(' ')[0] }}</span>
+          </a>
+          <a href="{{ url_for('store.account') }}#wishlist" class="store-wishlist-link" aria-label="Wishlist{% if wishlist_count %}, {{ wishlist_count }} items{% endif %}">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>
+            <span class="store-cart-label">Wishlist</span>
+            {% if wishlist_count %}<span class="store-cart-badge">{{ wishlist_count }}</span>{% endif %}
+          </a>
+          {% else %}
+          <a href="{{ url_for('store.login') }}" class="store-action-link">
+            <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
+            <span>Login</span>
+          </a>
+          <a href="{{ url_for('store.signup') }}" class="store-action-link store-action-register">
+            <span>Register</span>
+          </a>
+          {% endif %}
+          <a href="{{ url_for('store.cart_view') }}" class="store-cart-link" aria-label="Cart{% if cart_count %}, {{ cart_count }} items{% endif %}">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.5 3h2l2.7 12.4a2 2 0 0 0 2 1.6h8.6a2 2 0 0 0 2-1.6L22 7.5H6.2"/></svg>
+            <span class="store-cart-label">Cart</span>
+            {% if cart_count %}<span class="store-cart-badge">{{ cart_count }}</span>{% endif %}
+          </a>
+        </div>
+      </div>
+
+      <div class="store-mobile-search-bar" id="storeMobileSearchBar">
+        <form method="GET" action="{{ url_for('store.home') }}" class="store-container store-search-form" role="search">
+          <svg class="store-search-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" name="q" placeholder="Search frames, sunglasses, contact lenses..." value="{{ search_query or '' }}">
+          {% if gender is defined and gender and gender != 'all' %}<input type="hidden" name="gender" value="{{ gender }}">{% endif %}
+          <button type="submit" aria-label="Search">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </button>
+        </form>
+      </div>
+    </header>
+
+    <nav class="store-navbar" aria-label="Primary">
+      <div class="store-container store-navbar-inner">
+        <a href="{{ url_for('store.home') }}" class="store-navbar-link{{ ' active' if nav_active == 'home' else '' }}">Home</a>
+        <a href="{{ url_for('store.home', cat='Eyeglasses') }}" class="store-navbar-link{{ ' active' if nav_active == 'Eyeglasses' else '' }}">Eyeglasses</a>
+        <a href="{{ url_for('store.home', cat='Sunglasses') }}" class="store-navbar-link{{ ' active' if nav_active == 'Sunglasses' else '' }}">Sunglasses</a>
+        <a href="{{ url_for('store.home', cat='contact_lens') }}" class="store-navbar-link{{ ' active' if nav_active == 'contact_lens' else '' }}">Contact Lenses</a>
+        <div class="store-navbar-dropdown">
+          <button type="button" class="store-navbar-link store-navbar-dropdown-trigger" id="storeBrandsTrigger" aria-haspopup="true" aria-expanded="false" aria-controls="storeBrandsPanel">
+            Brands
+            <svg class="store-navbar-dropdown-caret" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="store-navbar-mega-panel" id="storeBrandsPanel" hidden>
+            {% if store_brands_grouped %}
+            <div class="store-brands-mega-grid">
+              {% for group in store_brands_grouped %}
+              <div class="store-brand-group">
+                <div class="store-brand-letter">{{ group.letter }}</div>
+                {% for b in group.brands %}
+                <a href="{{ url_for('store.home', brand=b) }}" class="store-brand-link">{{ b }}</a>
+                {% endfor %}
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <p class="store-visit-us-empty">No brands available yet.</p>
+            {% endif %}
+          </div>
+        </div>
+        <a href="{{ url_for('store.home') }}#store-catalog" class="store-navbar-link">Offers</a>
+        <div class="store-navbar-dropdown">
+          <button type="button" class="store-navbar-link store-navbar-dropdown-trigger" id="storeVisitUsTrigger" aria-haspopup="true" aria-expanded="false" aria-controls="storeVisitUsPanel">
+            Visit Us
+            <svg class="store-navbar-dropdown-caret" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="store-navbar-dropdown-panel" id="storeVisitUsPanel" hidden>
+            {% if store_branches %}
+            {% for branch in store_branches %}
+            <div class="store-visit-us-item">
+              <button type="button" class="store-visit-us-name" aria-expanded="false">
+                <span>{{ branch['name'] }}</span>
+                <span class="store-accordion-icon">+</span>
+              </button>
+              <div class="store-visit-us-address" hidden>
+                {% if branch['address'] %}<p>{{ branch['address'] }}</p>{% else %}<p class="store-visit-us-noaddr">Address coming soon.</p>{% endif %}
+                {% if branch['phone'] %}<a href="tel:{{ branch['phone'] }}">{{ branch['phone'] }}</a>{% endif %}
+              </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <p class="store-visit-us-empty">No branches configured yet.</p>
+            {% endif %}
+          </div>
+        </div>
+        <a href="{{ url_for('store.track') }}" class="store-navbar-link{{ ' active' if nav_active == 'track' else '' }}">Track Order</a>
+      </div>
+    </nav>
+  </div>
+
+  <div class="store-mobile-drawer-backdrop" id="storeMobileDrawerBackdrop" hidden></div>
+  <div class="store-mobile-drawer" id="storeMobileDrawer" aria-hidden="true">
+    <div class="store-mobile-drawer-header">
+      {% if shop_logo %}
+      <img src="{{ url_for('static', filename=shop_logo) }}" alt="{{ shop_name }}" class="store-logo">
+      {% else %}
+      <span class="store-logo-fallback">{{ (shop_name or '?')[:1] }}</span>
+      {% endif %}
+      <button type="button" class="store-mobile-drawer-close" id="storeMobileDrawerClose" aria-label="Close menu">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>
+      </button>
+    </div>
+    <nav class="store-mobile-drawer-nav" aria-label="Primary mobile">
+      <a href="{{ url_for('store.home') }}" class="{{ 'active' if nav_active == 'home' else '' }}">Home</a>
+      <a href="{{ url_for('store.home', cat='Eyeglasses') }}" class="{{ 'active' if nav_active == 'Eyeglasses' else '' }}">Eyeglasses</a>
+      <a href="{{ url_for('store.home', cat='Sunglasses') }}" class="{{ 'active' if nav_active == 'Sunglasses' else '' }}">Sunglasses</a>
+      <a href="{{ url_for('store.home', cat='contact_lens') }}" class="{{ 'active' if nav_active == 'contact_lens' else '' }}">Contact Lenses</a>
+      <a href="{{ url_for('store.home') }}#store-catalog">Offers</a>
+      <a href="{{ url_for('store.find_a_store') }}" class="{{ 'active' if nav_active == 'find_store' else '' }}">Find a Store</a>
+      <a href="{{ url_for('store.track') }}" class="{{ 'active' if nav_active == 'track' else '' }}">Track Order</a>
+    </nav>
+    {% if store_brands_grouped %}
+    <div class="store-mobile-drawer-visitus store-mobile-drawer-brands">
+      <button type="button" class="store-mobile-drawer-visitus-title store-mobile-brands-toggle" id="storeMobileBrandsToggle" aria-expanded="false" aria-controls="storeMobileBrandsList">
+        Brands <span class="store-accordion-icon">+</span>
+      </button>
+      <div class="store-mobile-brands-list" id="storeMobileBrandsList" hidden>
+        {% for group in store_brands_grouped %}
+        {% for b in group.brands %}
+        <a href="{{ url_for('store.home', brand=b) }}" class="store-brand-link">{{ b }}</a>
+        {% endfor %}
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+    {% if store_branches %}
+    <div class="store-mobile-drawer-visitus">
+      <div class="store-mobile-drawer-visitus-title">Visit Us</div>
+      {% for branch in store_branches %}
+      <div class="store-visit-us-item">
+        <button type="button" class="store-visit-us-name" aria-expanded="false">
+          <span>{{ branch['name'] }}</span>
+          <span class="store-accordion-icon">+</span>
+        </button>
+        <div class="store-visit-us-address" hidden>
+          {% if branch['address'] %}<p>{{ branch['address'] }}</p>{% else %}<p class="store-visit-us-noaddr">Address coming soon.</p>{% endif %}
+          {% if branch['phone'] %}<a href="tel:{{ branch['phone'] }}">{{ branch['phone'] }}</a>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    <div class="store-mobile-drawer-account">
+      {% if online_customer %}
+      <a href="{{ url_for('store.account') }}" class="store-action-link store-action-greeting">Hi, {{ online_customer['name'].split(' ')[0] }} - My Account</a>
+      <a href="{{ url_for('store.account') }}#wishlist" class="store-action-link">Wishlist{% if wishlist_count %} ({{ wishlist_count }}){% endif %}</a>
+      {% else %}
+      <a href="{{ url_for('store.login') }}" class="btn btn-secondary btn-block">Login</a>
+      <a href="{{ url_for('store.signup') }}" class="btn btn-primary btn-block">Register</a>
+      {% endif %}
+    </div>
+  </div>
+
+  {% set messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-wrap standalone">
+    {% for category, message in messages %}
+      <div class="flash flash-{{ category }}">{{ message }}</div>
+    {% endfor %}
+    </div>
+    {% endif %}
+  
+
+  <main class="store-content">
+    <div class="store-container">
+      {% block store_content %}{% endblock %}
+    </div>
+  </main>
+
+  <footer class="store-footer">
+    <div class="store-container store-footer-inner">
+      <div class="store-footer-col store-footer-brand">
+        {% if shop_logo %}
+        <img src="{{ url_for('static', filename=shop_logo) }}" alt="{{ shop_name }}" class="store-footer-logo">
+        {% else %}
+        <div class="store-footer-name">{{ shop_name }}</div>
+        {% endif %}
+        <p>Your trusted local optical shop for eyeglasses, sunglasses and contact lenses - now online for pickup or home delivery.</p>
+      </div>
+      <div class="store-footer-col">
+        <h4>Quick Links</h4>
+        <a href="{{ url_for('store.home') }}">Shop</a>
+        <a href="{{ url_for('store.track') }}">Track Order</a>
+        {% if online_customer %}
+        <a href="{{ url_for('store.account') }}">My Account</a>
+        {% else %}
+        <a href="{{ url_for('store.login') }}">Login</a>
+        <a href="{{ url_for('store.signup') }}">Register</a>
+        {% endif %}
+      </div>
+      <div class="store-footer-col">
+        <h4>Categories</h4>
+        <a href="{{ url_for('store.home', cat='Eyeglasses') }}">Eyeglasses</a>
+        <a href="{{ url_for('store.home', cat='Sunglasses') }}">Sunglasses</a>
+        <a href="{{ url_for('store.home', cat='contact_lens') }}">Contact Lenses</a>
+      </div>
+      <div class="store-footer-col">
+        <h4>Contact Us</h4>
+        {% if shop_address %}<div class="store-footer-contact">📍 {{ shop_address }}</div>{% endif %}
+        {% if shop_phone %}<div class="store-footer-contact">📞 <a href="tel:{{ shop_phone }}">{{ shop_phone }}</a></div>{% endif %}
+      </div>
+    </div>
+    <div class="store-footer-bottom">
+      &copy; {{ shop_name }}. All rights reserved.
+    </div>
+  </footer>
+</div>
+{% endblock %}

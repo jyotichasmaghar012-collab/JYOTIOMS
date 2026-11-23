@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Promotions{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Promotions</h1>
+  <div class="page-actions">
+    <a href="{{ url_for('promotions.new') }}" class="btn btn-primary btn-small">+ Add Promotion</a>
+  </div>
+</div>
+
+<div class="panel">
+  {% if promos %}
+  <p class="muted">Promotional tiles shown on the homepage (image + title + optional button). Only <strong>Active</strong> promotions are visible.</p>
+  <table class="table">
+    <thead><tr><th>Preview</th><th>Title</th><th>Button</th><th>Order</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for p in promos %}
+    <tr>
+      <td><div class="banner-thumb"><img src="{{ url_for('static', filename=p['image_path']) }}" alt="{{ p['title'] }}"></div></td>
+      <td>{{ p['title'] }}</td>
+      <td class="muted">{{ p['button_text'] or '-' }}</td>
+      <td>{{ p['display_order'] }}</td>
+      <td>
+        {% if p['is_active'] %}<span class="badge status-paid">Active</span>
+        {% else %}<span class="badge status-due">Inactive</span>{% endif %}
+      </td>
+      <td class="banner-row-actions">
+        <a href="{{ url_for('promotions.edit', promo_id=p['id']) }}" class="btn btn-small btn-secondary">Edit</a>
+        <form method="POST" action="{{ url_for('promotions.toggle', promo_id=p['id']) }}" style="display:inline" data-ajax-save>
+          <button type="submit" class="btn btn-small {{ 'btn-secondary' if p['is_active'] else 'btn-primary' }}">
+            {{ 'Deactivate' if p['is_active'] else 'Activate' }}
+          </button>
+        </form>
+        <form method="POST" action="{{ url_for('promotions.delete', promo_id=p['id']) }}" style="display:inline" onsubmit="return confirm('Delete this promotion? This cannot be undone.');" data-ajax-save>
+          <button type="submit" class="btn btn-small btn-danger">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No promotions yet - <a href="{{ url_for('promotions.new') }}">add the first one</a>.</p>
+  {% endif %}
+</div>
+{% endblock %}

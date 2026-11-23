@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Generate Invoice{% endblock %}
+{% block content %}
+<div class="page-header"><h1>Generate Invoice - Order {{ order['order_no'] }}</h1></div>
+
+<div class="panel">
+  <h2>Items</h2>
+  <table class="table">
+    <thead><tr><th>Description</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead>
+    <tbody>
+    {% for it in items %}
+      <tr>
+        <td>{{ it['description'] }}</td>
+        <td>{{ it['qty'] }}</td>
+        <td>Rs. {{ "%.2f"|format(it['unit_price']) }}</td>
+        <td>Rs. {{ "%.2f"|format(it['total_price']) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="order-grand-total">Subtotal: Rs. {{ "%.2f"|format(subtotal) }}</p>
+</div>
+
+{% if prescription %}
+<div class="panel">
+  <div class="invoice-prescription">
+    <h3>Prescription{% if prescription['rx_number'] %} - Rx No. {{ prescription['rx_number'] }}{% endif %}</h3>
+    <table>
+      <thead><tr><th></th><th>SPH</th><th>CYL</th><th>AXIS</th></tr></thead>
+      <tbody>
+        <tr><td><strong>OD (Right)</strong></td><td>{{ prescription['od_sph'] or '-' }}</td><td>{{ prescription['od_cyl'] or '-' }}</td><td>{{ prescription['od_axis'] or '-' }}</td></tr>
+        <tr><td><strong>OS (Left)</strong></td><td>{{ prescription['os_sph'] or '-' }}</td><td>{{ prescription['os_cyl'] or '-' }}</td><td>{{ prescription['os_axis'] or '-' }}</td></tr>
+      </tbody>
+    </table>
+    <p class="rx-extra">ADD: {{ prescription['add_power'] or '-' }} &nbsp; | &nbsp; PD: {{ prescription['pd'] or '-' }}</p>
+  </div>
+  <p class="muted">This prescription is linked to this order - it will automatically print on the invoice too once generated.</p>
+</div>
+{% endif %}
+
+<div class="panel form-panel">
+<form method="POST">
+  <div class="form-row">
+    <div>
+      <label>Discount (Rs.)</label>
+      <input type="number" step="0.01" name="discount" value="0">
+    </div>
+    <div>
+      <label>GST %</label>
+      <input type="number" step="0.01" name="gst_percent" value="{{ default_gst }}">
+    </div>
+  </div>
+  <div class="form-row">
+    <div>
+      <label>Amount Paid Now (Rs.)</label>
+      <input type="number" step="0.01" name="amount_paid" value="0">
+    </div>
+    <div>
+      <label>Payment Mode</label>
+      <select name="payment_mode">
+        <option value="">-- Select --</option>
+        <option value="Cash">Cash</option>
+        <option value="Card">Card</option>
+        <option value="UPI">UPI</option>
+        <option value="Bank Transfer">Bank Transfer</option>
+      </select>
+    </div>
+  </div>
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Generate Invoice</button>
+    <a href="{{ url_for('orders.detail', order_id=order['id']) }}" class="btn btn-secondary">Cancel</a>
+  </div>
+</form>
+</div>
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit Category' if category else 'Add Category' }}{% endblock %}
+{% block content %}
+{% macro val(name, default='') %}{{ (form.get(name, default) if form else (category[name] if category and category[name] is not none else default)) }}{% endmacro %}
+<div class="page-header">
+  <h1>{{ 'Edit Category' if category else 'Add Category' }}</h1>
+  <div class="page-actions">
+    <a href="{{ url_for('category_showcase.index') }}" class="btn btn-small btn-secondary">Back to Categories</a>
+  </div>
+</div>
+
+<div class="panel form-panel">
+<form method="POST" enctype="multipart/form-data" data-ajax-save>
+  <label>Category Name *</label>
+  <input type="text" name="name" required value="{{ val('name') }}">
+
+  <div class="form-row">
+    <div>
+      <label>Image (optional)</label>
+      {% if category and category['image_path'] %}
+      <div class="product-photo-preview"><img src="{{ url_for('static', filename=category['image_path']) }}" alt=""></div>
+      <label class="checkbox-label"><input type="checkbox" name="remove_image" value="1"> Remove image</label>
+      {% endif %}
+      <input type="file" name="image" accept="image/png,image/jpeg,image/webp">
+      <p class="field-hint">JPG, PNG or WEBP. A square or landscape photo works best - larger uploads are automatically resized.</p>
+    </div>
+    <div>
+      <label>Display Order</label>
+      <input type="number" name="display_order" value="{{ val('display_order', 0) if category else 0 }}">
+      <p class="field-hint">Lower numbers show first in the "Shop by Category" section.</p>
+    </div>
+  </div>
+
+  <label>Description (optional)</label>
+  <textarea name="description" rows="3">{{ val('description') }}</textarea>
+
+  <div class="form-row">
+    <div>
+      <label class="checkbox-label">
+        <input type="checkbox" name="is_active" value="1" {{ 'checked' if (form.get('is_active') if form else (category is none or category['is_active'])) else '' }}>
+        Active (visible on the storefront)
+      </label>
+    </div>
+    <div></div>
+  </div>
+
+  <h2 class="section-title">SEO (optional)</h2>
+  <div class="form-row">
+    <div>
+      <label>Meta Title</label>
+      <input type="text" name="meta_title" maxlength="70" value="{{ val('meta_title') }}" placeholder="Defaults to category name">
+    </div>
+    <div>
+      <label>URL Slug</label>
+      <input type="text" name="slug" value="{{ val('slug') }}" placeholder="e.g. sunglasses">
+    </div>
+  </div>
+  <label>Meta Description</label>
+  <textarea name="meta_description" rows="2" maxlength="200" placeholder="Shown in Google search results (optional)">{{ val('meta_description') }}</textarea>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a href="{{ url_for('category_showcase.index') }}" class="btn btn-secondary">Cancel</a>
+  </div>
+</form>
+</div>
+{% endblock %}

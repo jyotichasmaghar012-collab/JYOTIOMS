@@ -1,0 +1,836 @@
+{% extends "store/base.html" %}
+{% block title %}{{ product['meta_title'] or (product['brand'] ~ ' ' ~ (product['model'] if item_type == 'frame' else (product['lens_type'] or ''))) }} - {{ shop_name }}{% endblock %}
+{% block extra_head %}
+{% set _meta_desc = product['meta_description'] or product['online_description'] %}
+{% if _meta_desc %}<meta name="description" content="{{ _meta_desc }}">{% endif %}
+{% endblock %}
+{% block store_content %}
+{% macro detail_row(label, value, emphasize=False) %}{% if value %}<div class="store-detail-row{{ ' store-detail-row-emphasis' if emphasize else '' }}"><span class="store-detail-label">{{ label }}:</span> {{ value }}</div>{% endif %}{% endmacro %}
+{% set gallery_paths = (gallery|map(attribute='image_path')|list) if gallery else ([product['image_path']] if product['image_path'] else []) %}
+<a href="{{ url_for('store.home') }}" class="store-back-link">&larr; Back to shop</a>
+<div class="store-product-detail">
+  <div class="store-gallery" id="product-gallery">
+    {% if gallery_paths %}
+    <div class="store-gallery-main" id="gallery-main">
+      {% for path in gallery_paths %}
+      <img src="{{ url_for('static', filename=path) }}" alt="{{ product['brand'] }}"
+           class="store-gallery-main-img{{ ' active' if loop.first else '' }}" data-index="{{ loop.index0 }}"
+           {% if not loop.first %} loading="lazy"{% endif %}>
+      {% endfor %}
+      {% if gallery_paths|length > 1 %}
+      <button type="button" class="store-gallery-arrow store-gallery-prev" aria-label="Previous image">&#10094;</button>
+      <button type="button" class="store-gallery-arrow store-gallery-next" aria-label="Next image">&#10095;</button>
+      {% endif %}
+      <button type="button" class="store-gallery-zoom-hint" id="gallery-zoom-hint" aria-label="View full screen">&#128269;</button>
+    </div>
+    {% if gallery_paths|length > 1 %}
+    <div class="store-gallery-thumbs" id="gallery-thumbs">
+      {% for path in gallery_paths %}
+      <img src="{{ url_for('static', filename=path) }}" alt="" class="store-gallery-thumb{{ ' active' if loop.first else '' }}" data-index="{{ loop.index0 }}" loading="lazy">
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="store-product-img"><div class="store-card-noimg store-card-noimg-big">📷</div></div>
+    {% endif %}
+  </div>
+  <div class="store-product-info">
+    <h1>{{ product['brand'] }} {{ product['model'] if item_type == 'frame' else '' }}</h1>
+
+    <div class="store-detail-list">
+      {% if item_type == 'frame' %}
+        {{ detail_row('Brand', product['brand']) }}
+        {{ detail_row('Gender', gender_label) }}
+        {{ detail_row('Frame ID', product['model']) }}
+        {{ detail_row('Color', product['color']) }}
+        {{ detail_row('Size', product['size']) }}
+        {{ detail_row('Category', product['category']) }}
+      {% else %}
+        {{ detail_row('Brand', product['brand']) }}
+        {{ detail_row('Gender', gender_label) }}
+        {{ detail_row('Lens Type', product['lens_type']) }}
+        {{ detail_row('Power', product['power']) }}
+      {% endif %}
+      {{ detail_row('Price', currency + ' ' + '%.0f'|format(product['selling_price']), emphasize=True) }}
+    </div>
+
+    {% if variant_siblings and variant_siblings|length > 1 %}
+    <div class="store-detail-row store-variant-swatches-row">
+      <span class="store-detail-label">Color:</span>
+      <div class="store-variant-swatches">
+        {% for v in variant_siblings %}
+        <a href="{{ url_for('store.product_detail', item_type='frame', item_id=v['id']) }}"
+           class="store-variant-swatch{{ ' active' if v['id'] == product['id'] else '' }}" title="{{ v['color'] or 'Color option' }}">
+          {% if v['image_path'] %}<img src="{{ url_for('static', filename=v['image_path']) }}" alt="{{ v['color'] or '' }}">{% else %}<span class="store-card-swatch-dot"></span>{% endif %}
+          <span class="store-variant-swatch-label">{{ v['color'] or 'Option' }}</span>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if product['online_description'] %}
+    <div class="store-detail-row store-detail-description">
+      <span class="store-detail-label">Description:</span> {{ product['online_description'] }}
+    </div>
+    {% endif %}
+
+    <div class="store-detail-row store-product-stock">
+      <span class="store-detail-label">Stock:</span>
+      {% if product['stock_qty'] > 0 %}In Stock ({{ product['stock_qty'] }} available){% else %}Out of Stock{% endif %}
+    </div>
+
+    {% if product['stock_qty'] > 0 %}
+    {# Single form, two submit buttons - "Add to Cart" sends next=this page
+       (stay here, see the flash), "Buy It Now" sends next=checkout (go
+       straight to checkout with this item in the cart). A submit button's
+       own name/value is only included for whichever button was actually
+       clicked, so routes/storefront.py's cart_add() sees the right
+       destination either way with no JS needed for the routing itself. #}
+    <form method="POST" action="{{ url_for('store.cart_add') }}" class="store-add-form">
+      <input type="hidden" name="item_type" value="{{ item_type }}">
+      <input type="hidden" name="item_id" value="{{ product['id'] }}">
+      <div class="store-buy-row">
+        <div class="store-qty-stepper">
+          <button type="button" class="store-qty-btn store-qty-minus" aria-label="Decrease quantity">&minus;</button>
+          <input type="number" name="qty" value="1" min="1" max="{{ product['stock_qty'] }}" step="1" class="store-qty-input">
+          <button type="button" class="store-qty-btn store-qty-plus" aria-label="Increase quantity">+</button>
+        </div>
+        <button type="submit" name="next" value="{{ request.path }}" class="btn store-btn-add-cart">Add to Cart</button>
+      </div>
+      <button type="submit" name="next" value="{{ url_for('store.checkout') }}" class="btn store-btn-buy-now">Buy It Now</button>
+    </form>
+    <script>
+    document.querySelectorAll(".store-qty-input").forEach(function (input) {
+      var max = parseInt(input.getAttribute("max"), 10);
+      function clamp() {
+        var value = parseInt(input.value, 10);
+        if (isNaN(value) || value < 1) value = 1;
+        if (!isNaN(max) && value > max) value = max;
+        input.value = value;
+      }
+      input.addEventListener("input", clamp);
+      input.addEventListener("keydown", function (e) {
+        if (e.key === "-" || e.key === "Minus" || e.key === "Subtract") e.preventDefault();
+      });
+      var wrap = input.closest(".store-qty-stepper");
+      if (wrap) {
+        var minusBtn = wrap.querySelector(".store-qty-minus");
+        var plusBtn = wrap.querySelector(".store-qty-plus");
+        if (minusBtn) minusBtn.addEventListener("click", function () {
+          input.value = Math.max(1, (parseInt(input.value, 10) || 1) - 1);
+        });
+        if (plusBtn) plusBtn.addEventListener("click", function () {
+          var next = (parseInt(input.value, 10) || 1) + 1;
+          input.value = (!isNaN(max) && next > max) ? max : next;
+        });
+      }
+    });
+    </script>
+    {% endif %}
+
+    <button type="button" id="store-detail-wishlist-btn" class="store-detail-wishlist-btn{{ ' active' if is_wishlisted else '' }}"
+            data-item-type="{{ item_type }}" data-item-id="{{ product['id'] }}">
+      <span class="store-detail-wishlist-icon">{{ '♥' if is_wishlisted else '♡' }}</span>
+      <span class="store-detail-wishlist-label">{{ 'Saved to Wishlist' if is_wishlisted else 'Save to Wishlist' }}</span>
+    </button>
+    <script>
+    (function () {
+      var btn = document.getElementById("store-detail-wishlist-btn");
+      if (!btn) return;
+      var TOGGLE_URL = "{{ url_for('store.wishlist_toggle') }}";
+      var LOGIN_URL = "{{ url_for('store.login') }}";
+      btn.addEventListener("click", function () {
+        btn.disabled = true;
+        var body = "item_type=" + encodeURIComponent(btn.dataset.itemType) + "&item_id=" + encodeURIComponent(btn.dataset.itemId);
+        fetch(TOGGLE_URL, {
+          method: "POST",
+          headers: { "X-Requested-With": "XMLHttpRequest", "Content-Type": "application/x-www-form-urlencoded" },
+          body: body,
+        })
+          .then(function (r) {
+            if (r.status === 401) {
+              window.location.href = LOGIN_URL + "?next=" + encodeURIComponent(window.location.pathname);
+              return null;
+            }
+            return r.json();
+          })
+          .then(function (data) {
+            if (!data) return;
+            if (data.ok) {
+              btn.classList.toggle("active", data.saved);
+              btn.querySelector(".store-detail-wishlist-icon").textContent = data.saved ? "♥" : "♡";
+              btn.querySelector(".store-detail-wishlist-label").textContent = data.saved ? "Saved to Wishlist" : "Save to Wishlist";
+            }
+          })
+          .catch(function () {})
+          .finally(function () { btn.disabled = false; });
+      });
+    })();
+    </script>
+
+    <div class="store-trust-badges">
+      <div class="store-trust-badge">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="15" height="11"/><path d="M16 10h4l3 3v4h-7z"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="19" r="2"/></svg>
+        <span>Free shipping</span>
+      </div>
+      <div class="store-trust-badge">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        <span>Secure payment</span>
+      </div>
+      <div class="store-trust-badge">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 8.6a2 2 0 0 0 0-2.8l-2.4-2.4a2 2 0 0 0-2.8 0L4 14.8V20h5.2z"/><path d="M13.5 6.5l4 4"/></svg>
+        <span>Easy Exchange</span>
+      </div>
+    </div>
+
+    {# Generic informational accordion. "Frame Description" prefers the
+       product's own online_description when staff have set one; the other
+       panels are shop-wide policy/brand copy rather than per-product data
+       (this app doesn't store separate lens/warranty/after-sales text per
+       item), same content across every product page. #}
+    <div class="store-info-accordion">
+      {% set accordion_items = [
+        ('Frame Description', product['online_description'] or (product['brand'] ~ ' ' ~ (product['model'] if item_type == 'frame' else '') ~ ' - a quality ' ~ (product['category'] or 'eyewear') ~ ' frame, carefully checked before dispatch for fit and finish.')),
+        ('Lens Description', 'Frames ship with standard demo/clear lenses fitted. Prescription lenses (single vision, bifocal, progressive or blue-light/anti-glare coated) can be fitted to this frame - add your prescription at checkout or visit us in-store for a fitting.'),
+        ('About the Brand', (product['brand'] or 'This brand') ~ ' is one of the trusted eyewear brands we stock, chosen for build quality, comfort and everyday durability.'),
+        ('Authenticity & Warranty', 'Every product sold by ' ~ (shop_name or 'us') ~ ' is 100% genuine, sourced directly from authorized suppliers, and covered by the manufacturer warranty against manufacturing defects.'),
+        ('After Sales Service', 'Need an adjustment, repair or have a question after your purchase? Reach out via Track Order or call us' ~ (' at ' ~ shop_phone if shop_phone else '') ~ ' - we\'re happy to help with fitting, minor repairs and warranty claims.')
+      ] %}
+      {% for title, body in accordion_items %}
+      <div class="store-accordion-item">
+        <button type="button" class="store-accordion-trigger" aria-expanded="false">
+          <span>{{ title }}</span>
+          <span class="store-accordion-icon">+</span>
+        </button>
+        <div class="store-accordion-panel" hidden>{{ body }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% set share_url = request.url_root.rstrip('/') + request.path %}
+    {% set share_text = (product['brand'] or shop_name) ~ (' ' ~ product['model'] if item_type == 'frame' and product['model'] else '') %}
+    <div class="store-share-row">
+      <button type="button" class="store-share-link" id="store-native-share-btn" data-url="{{ share_url }}" data-text="{{ share_text }}">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.6" x2="15.4" y2="6.4"/><line x1="8.6" y1="13.4" x2="15.4" y2="17.6"/></svg>
+        Share
+      </button>
+      <a class="store-share-link" href="https://twitter.com/intent/tweet?url={{ share_url|urlencode }}&text={{ share_text|urlencode }}" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M18.9 2H22l-7.6 8.7L23.3 22h-7l-5.5-7.2L4.5 22H1.4l8.2-9.3L1 2h7.2l5 6.6L18.9 2zm-1.2 18h1.7L7.4 4H5.6l12.1 16z"/></svg>
+        Tweet
+      </a>
+      <a class="store-share-link" href="https://pinterest.com/pin/create/button/?url={{ share_url|urlencode }}&description={{ share_text|urlencode }}" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M12 2a10 10 0 0 0-3.6 19.3c0-.8-.1-2 .1-2.9l1.4-6s-.3-.7-.3-1.7c0-1.6.9-2.8 2.1-2.8 1 0 1.5.7 1.5 1.6 0 1-.6 2.5-1 3.9-.3 1.1.6 2.1 1.7 2.1 2 0 3.5-2.1 3.5-5.2 0-2.7-2-4.6-4.7-4.6-3.2 0-5.1 2.4-5.1 4.9 0 1 .4 2 .8 2.6.1.1.1.2.1.4l-.3 1.4c-.1.2-.2.3-.4.2-1.4-.6-2.2-2.6-2.2-4.2 0-3.4 2.5-6.6 7.1-6.6 3.7 0 6.6 2.7 6.6 6.2 0 3.7-2.3 6.7-5.6 6.7-1.1 0-2.1-.6-2.5-1.2l-.7 2.6c-.2 1-.9 2.2-1.3 2.9A10 10 0 1 0 12 2z"/></svg>
+        Pin it
+      </a>
+      <a class="store-share-link" href="https://wa.me/?text={{ (share_text ~ ' ' ~ share_url)|urlencode }}" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 1.8a8.2 8.2 0 0 1 7 12.5l-.2.4.9 3.3-3.4-.9-.4.2A8.2 8.2 0 1 1 12 3.8zm-3.2 4c-.2 0-.5 0-.7.3-.2.3-.9.9-.9 2s.9 2.3 1 2.4c.1.2 1.8 2.8 4.4 3.8 2.2.9 2.6.7 3.1.7.5 0 1.6-.6 1.8-1.3.2-.6.2-1.2.2-1.3-.1-.1-.3-.2-.6-.3-.3-.2-1.6-.8-1.9-.9-.2-.1-.4-.1-.6.1-.2.3-.7.9-.8 1-.2.2-.3.2-.6.1-.3-.2-1.2-.4-2.2-1.4-.8-.7-1.4-1.6-1.5-1.9-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.2-.1.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.1-.6-1.5-.8-2-.2-.5-.4-.4-.6-.4z"/></svg>
+        WhatsApp
+      </a>
+      <button type="button" class="store-share-link" id="store-copy-link-btn" data-url="{{ share_url }}">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        <span id="store-copy-link-label">Copy Link</span>
+      </button>
+    </div>
+    <script>
+    document.querySelectorAll(".store-accordion-trigger").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var panel = btn.nextElementSibling;
+        var open = btn.getAttribute("aria-expanded") === "true";
+        btn.setAttribute("aria-expanded", String(!open));
+        panel.hidden = open;
+        btn.querySelector(".store-accordion-icon").textContent = open ? "+" : "−";
+      });
+    });
+    var nativeShareBtn = document.getElementById("store-native-share-btn");
+    if (nativeShareBtn) {
+      nativeShareBtn.addEventListener("click", function () {
+        var url = nativeShareBtn.dataset.url, text = nativeShareBtn.dataset.text;
+        if (navigator.share) {
+          navigator.share({ title: text, url: url }).catch(function () {});
+        } else {
+          window.open("https://www.facebook.com/sharer/sharer.php?u=" + encodeURIComponent(url), "_blank", "noopener");
+        }
+      });
+    }
+    var copyBtn = document.getElementById("store-copy-link-btn");
+    if (copyBtn) {
+      copyBtn.addEventListener("click", function () {
+        var label = document.getElementById("store-copy-link-label");
+        navigator.clipboard.writeText(copyBtn.dataset.url).then(function () {
+          var original = label.textContent;
+          label.textContent = "Copied!";
+          setTimeout(function () { label.textContent = original; }, 1800);
+        }).catch(function () {});
+      });
+    }
+    </script>
+  </div>
+</div>
+
+{# "Recently viewed" strip - tracked client-side in localStorage (no
+   backend/session storage needed): each product page view records a small
+   snapshot of itself (id, type, title, image, price, stock, url), and this
+   script renders every OTHER remembered product as cards below. Purely
+   per-browser, so it naturally resets if the shopper switches devices. #}
+<section class="store-recently-viewed" id="recently-viewed-section" hidden>
+  <h2 class="store-section-title">Recently viewed</h2>
+  <div class="store-grid" id="recently-viewed-grid"></div>
+</section>
+<script id="recently-viewed-current" type="application/json">
+{{ {
+  "item_type": item_type,
+  "item_id": product['id'],
+  "title": (product['brand'] or '') ~ (' ' ~ product['model'] if item_type == 'frame' and product['model'] else ''),
+  "brand": product['brand'] or '',
+  "badge": gender_label or '',
+  "price": product['selling_price'],
+  "currency": currency,
+  "stock_qty": product['stock_qty'],
+  "image": (url_for('static', filename=gallery_paths[0]) if gallery_paths else ''),
+  "url": request.path
+}|tojson }}
+</script>
+<script>
+(function () {
+  var STORAGE_KEY = "storeRecentlyViewed";
+  var MAX_STORED = 12;
+  var MAX_SHOWN = 6;
+
+  var currentEl = document.getElementById("recently-viewed-current");
+  if (!currentEl) return;
+  var current;
+  try { current = JSON.parse(currentEl.textContent); } catch (e) { return; }
+  if (!current.item_id) return;
+
+  var stored = [];
+  try { stored = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch (e) { stored = []; }
+  if (!Array.isArray(stored)) stored = [];
+
+  // Drop any existing entry for this same product, then put the fresh
+  // snapshot at the front (most-recently-viewed first) and cap the list.
+  stored = stored.filter(function (p) {
+    return !(p.item_type === current.item_type && p.item_id === current.item_id);
+  });
+  stored.unshift(current);
+  stored = stored.slice(0, MAX_STORED);
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(stored)); } catch (e) {}
+
+  var toShow = stored.filter(function (p) {
+    return !(p.item_type === current.item_type && p.item_id === current.item_id);
+  }).slice(0, MAX_SHOWN);
+  if (!toShow.length) return;
+
+  var grid = document.getElementById("recently-viewed-grid");
+  var section = document.getElementById("recently-viewed-section");
+
+  toShow.forEach(function (p) {
+    var card = document.createElement("div");
+    card.className = "store-card store-recently-viewed-card";
+
+    var link = document.createElement("a");
+    link.className = "store-card-link";
+    link.href = p.url;
+
+    var imgWrap = document.createElement("div");
+    imgWrap.className = "store-card-img";
+    if (p.badge) {
+      var badge = document.createElement("span");
+      badge.className = "store-card-badge-tag";
+      badge.textContent = p.badge;
+      imgWrap.appendChild(badge);
+    }
+    if (p.image) {
+      var img = document.createElement("img");
+      img.src = p.image;
+      img.alt = p.title || "";
+      img.loading = "lazy";
+      imgWrap.appendChild(img);
+    } else {
+      var noimg = document.createElement("div");
+      noimg.className = "store-card-noimg";
+      noimg.textContent = "📷";
+      imgWrap.appendChild(noimg);
+    }
+
+    var body = document.createElement("div");
+    body.className = "store-card-body";
+    var brandEl = document.createElement("div");
+    brandEl.className = "store-card-rv-brand";
+    brandEl.textContent = p.brand || "";
+    var titleEl = document.createElement("div");
+    titleEl.className = "store-card-title";
+    titleEl.textContent = p.title || "";
+    var stockEl = document.createElement("div");
+    var lowStock = p.stock_qty > 0 && p.stock_qty <= 3;
+    stockEl.className = "store-card-rv-stock " + (p.stock_qty > 0 ? (lowStock ? "low" : "in") : "out");
+    stockEl.textContent = p.stock_qty > 0 ? (lowStock ? "Selling Out Fast" : "In Stock") : "Out of Stock";
+    var priceEl = document.createElement("div");
+    priceEl.className = "store-card-price";
+    priceEl.textContent = p.currency + " " + Math.round(p.price).toLocaleString("en-IN") + ".00";
+
+    body.appendChild(brandEl);
+    body.appendChild(titleEl);
+    body.appendChild(stockEl);
+    body.appendChild(priceEl);
+    link.appendChild(imgWrap);
+    link.appendChild(body);
+    card.appendChild(link);
+    grid.appendChild(card);
+  });
+
+  section.hidden = false;
+})();
+</script>
+
+{% if gallery_paths %}
+<div class="store-lightbox" id="gallery-lightbox" hidden>
+  <div class="store-lightbox-stage" id="lightbox-stage">
+    {% for path in gallery_paths %}
+    <img src="{{ url_for('static', filename=path) }}" alt="{{ product['brand'] }}"
+         class="store-lightbox-img{{ ' active' if loop.first else '' }}" data-index="{{ loop.index0 }}">
+    {% endfor %}
+  </div>
+  <button type="button" class="store-lightbox-close" id="lightbox-close" aria-label="Close">&times;</button>
+  {% if gallery_paths|length > 1 %}
+  <button type="button" class="store-lightbox-arrow store-lightbox-prev" aria-label="Previous image">&#10094;</button>
+  <button type="button" class="store-lightbox-arrow store-lightbox-next" aria-label="Next image">&#10095;</button>
+  <div class="store-lightbox-counter" id="lightbox-counter"></div>
+  {% endif %}
+</div>
+<script>
+(function () {
+  var mainImgs = Array.from(document.querySelectorAll(".store-gallery-main-img"));
+  var thumbs = Array.from(document.querySelectorAll(".store-gallery-thumb"));
+  var total = mainImgs.length;
+  if (!total) return;
+  var current = 0;
+
+  function setActive(index) {
+    index = ((index % total) + total) % total;
+    current = index;
+    mainImgs.forEach(function (img) { img.classList.toggle("active", parseInt(img.dataset.index, 10) === index); });
+    thumbs.forEach(function (t) { t.classList.toggle("active", parseInt(t.dataset.index, 10) === index); });
+  }
+
+  thumbs.forEach(function (t) {
+    t.addEventListener("click", function () { setActive(parseInt(t.dataset.index, 10)); });
+  });
+  var prevBtn = document.querySelector(".store-gallery-prev");
+  var nextBtn = document.querySelector(".store-gallery-next");
+  if (prevBtn) prevBtn.addEventListener("click", function () { setActive(current - 1); });
+  if (nextBtn) nextBtn.addEventListener("click", function () { setActive(current + 1); });
+
+  // Swipe on the inline main image (mobile)
+  var mainWrap = document.getElementById("gallery-main");
+  var touchStartX = null;
+  if (mainWrap) {
+    mainWrap.addEventListener("touchstart", function (e) {
+      touchStartX = e.touches[0].clientX;
+    }, { passive: true });
+    mainWrap.addEventListener("touchend", function (e) {
+      if (touchStartX === null) return;
+      var dx = e.changedTouches[0].clientX - touchStartX;
+      if (Math.abs(dx) > 40) setActive(current + (dx < 0 ? 1 : -1));
+      touchStartX = null;
+    });
+  }
+
+  // ----- Full-screen lightbox -----
+  var lightbox = document.getElementById("gallery-lightbox");
+  var lbImgs = Array.from(document.querySelectorAll(".store-lightbox-img"));
+  var lbCounter = document.getElementById("lightbox-counter");
+  var lbClose = document.getElementById("lightbox-close");
+  var lbPrev = document.querySelector(".store-lightbox-prev");
+  var lbNext = document.querySelector(".store-lightbox-next");
+  var lbStage = document.getElementById("lightbox-stage");
+  var zoomHint = document.getElementById("gallery-zoom-hint");
+
+  var scale = 1, panX = 0, panY = 0;
+
+  function renderTransform(img) {
+    img.style.transform = "translate(calc(-50% + " + panX + "px), calc(-50% + " + panY + "px)) scale(" + scale + ")";
+  }
+  function resetZoom() {
+    scale = 1; panX = 0; panY = 0;
+    var img = lbImgs[current];
+    if (img) { img.style.transform = ""; }
+  }
+  function lbSetActive(index) {
+    index = ((index % total) + total) % total;
+    current = index;
+    resetZoom();
+    lbImgs.forEach(function (img) { img.classList.toggle("active", parseInt(img.dataset.index, 10) === index); });
+    if (lbCounter) lbCounter.textContent = (index + 1) + " / " + total;
+    setActive(index);
+  }
+  function openLightbox(index) {
+    lbSetActive(index);
+    lightbox.hidden = false;
+    document.body.style.overflow = "hidden";
+  }
+  function closeLightbox() {
+    lightbox.hidden = true;
+    document.body.style.overflow = "";
+    resetZoom();
+  }
+
+  mainImgs.forEach(function (img) {
+    img.addEventListener("click", function () { openLightbox(parseInt(img.dataset.index, 10)); });
+  });
+  if (zoomHint) zoomHint.addEventListener("click", function () { openLightbox(current); });
+  if (lbClose) lbClose.addEventListener("click", closeLightbox);
+  if (lbPrev) lbPrev.addEventListener("click", function () { lbSetActive(current - 1); });
+  if (lbNext) lbNext.addEventListener("click", function () { lbSetActive(current + 1); });
+  lightbox.addEventListener("click", function (e) {
+    if (e.target === lightbox) closeLightbox();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (lightbox.hidden) return;
+    if (e.key === "Escape") closeLightbox();
+    else if (e.key === "ArrowLeft") lbSetActive(current - 1);
+    else if (e.key === "ArrowRight") lbSetActive(current + 1);
+  });
+
+  // Double-click / double-tap to toggle zoom
+  function toggleZoom(img) {
+    if (scale === 1) { scale = 2.5; } else { scale = 1; panX = 0; panY = 0; }
+    renderTransform(img);
+  }
+  lbImgs.forEach(function (img) {
+    img.addEventListener("dblclick", function () { toggleZoom(img); });
+  });
+
+  // Pointer-based drag-to-pan (when zoomed) and swipe-to-change (when not zoomed)
+  var dragging = false, dragStartX = 0, dragStartY = 0, startPanX = 0, startPanY = 0;
+  var pointers = {};
+  var pinchStartDist = null, pinchStartScale = 1;
+
+  function dist(p1, p2) {
+    return Math.hypot(p1.clientX - p2.clientX, p1.clientY - p2.clientY);
+  }
+
+  if (lbStage) {
+    lbStage.addEventListener("pointerdown", function (e) {
+      pointers[e.pointerId] = e;
+      var ids = Object.keys(pointers);
+      if (ids.length === 1) {
+        dragging = true;
+        dragStartX = e.clientX; dragStartY = e.clientY;
+        startPanX = panX; startPanY = panY;
+      } else if (ids.length === 2) {
+        dragging = false;
+        var pts = ids.map(function (id) { return pointers[id]; });
+        pinchStartDist = dist(pts[0], pts[1]);
+        pinchStartScale = scale;
+      }
+    });
+    lbStage.addEventListener("pointermove", function (e) {
+      if (!pointers[e.pointerId]) return;
+      pointers[e.pointerId] = e;
+      var ids = Object.keys(pointers);
+      var img = lbImgs[current];
+      if (!img) return;
+      if (ids.length === 2 && pinchStartDist) {
+        var pts = ids.map(function (id) { return pointers[id]; });
+        var newDist = dist(pts[0], pts[1]);
+        scale = Math.min(4, Math.max(1, pinchStartScale * (newDist / pinchStartDist)));
+        renderTransform(img);
+      } else if (dragging && ids.length === 1) {
+        var dx = e.clientX - dragStartX;
+        var dy = e.clientY - dragStartY;
+        if (scale > 1) {
+          panX = startPanX + dx;
+          panY = startPanY + dy;
+          renderTransform(img);
+        }
+      }
+    });
+    function endPointer(e) {
+      var wasSingle = Object.keys(pointers).length === 1;
+      var dx = 0;
+      if (wasSingle && dragging && scale === 1) {
+        dx = e.clientX - dragStartX;
+      }
+      delete pointers[e.pointerId];
+      dragging = false;
+      pinchStartDist = null;
+      if (wasSingle && scale === 1 && Math.abs(dx) > 50) {
+        lbSetActive(current + (dx < 0 ? 1 : -1));
+      }
+    }
+    lbStage.addEventListener("pointerup", endPointer);
+    lbStage.addEventListener("pointercancel", endPointer);
+  }
+})();
+</script>
+{% endif %}
+
+{% macro review_link(sort=none, rating=none, photos=none, page=none) -%}
+{%- set s = sort if sort is not none else review_sort -%}
+{%- set r = rating if rating is not none else (review_rating_filter or 0) -%}
+{%- set ph = photos if photos is not none else (1 if review_photos_only else 0) -%}
+{{- url_for('store.product_detail', item_type=item_type, item_id=product['id']) }}?sort={{ s }}{% if r %}&rating={{ r }}{% endif %}{% if ph %}&photos=1{% endif %}{% if page %}&page={{ page }}{% endif %}#reviews
+{%- endmacro %}
+
+<section class="store-reviews" id="reviews">
+  <h2 class="store-section-title">Customer Reviews</h2>
+
+  <div class="store-reviews-summary">
+    <div class="store-reviews-summary-score">
+      <div class="store-reviews-avg">{{ review_summary.average }}</div>
+      <div class="review-stars-display" aria-label="{{ review_summary.average }} out of 5 stars">
+        {% set rounded = review_summary.average|round(0, 'common')|int %}
+        {% for i in range(1, 6) %}<span class="star{{ ' filled' if i <= rounded else '' }}">★</span>{% endfor %}
+      </div>
+      <div class="muted">{{ review_summary.count }} Review{{ 's' if review_summary.count != 1 else '' }}</div>
+    </div>
+    <div class="store-reviews-breakdown">
+      {% for n in [5,4,3,2,1] %}
+      <a href="{{ review_link(rating=n) }}" class="store-reviews-bar-row{{ ' active' if review_rating_filter == n|string else '' }}">
+        <span class="store-reviews-bar-label">{{ n }} ★</span>
+        <span class="store-reviews-bar-track"><span class="store-reviews-bar-fill" style="width:{{ (review_summary.breakdown[n] / review_summary.max_bucket * 100) if review_summary.max_bucket else 0 }}%"></span></span>
+        <span class="store-reviews-bar-count">{{ review_summary.breakdown[n] }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="store-reviews-actions">
+    {% if online_customer %}
+      {% if my_review %}
+      <div class="store-my-review-note">
+        You reviewed this product.
+        {% if review_edit_open %}<a href="{{ url_for('store.review_edit', review_id=my_review['id']) }}">Edit your review</a>{% else %}<span class="muted">(edit window closed)</span>{% endif %}
+        {% if my_review['status'] == 'pending' %}<span class="badge status-pending">Pending Approval</span>
+        {% elif my_review['status'] == 'rejected' %}<span class="badge status-due">Not Approved</span>{% endif %}
+      </div>
+      {% elif can_review %}
+      <button type="button" class="btn btn-primary" id="store-write-review-btn">Write a Review</button>
+      {% else %}
+      <p class="muted">Only customers who have purchased and received this product can write a review.</p>
+      {% endif %}
+    {% else %}
+    <p class="muted"><a href="{{ url_for('store.login', next=request.path) }}">Log in</a> to write a review (available to verified purchasers).</p>
+    {% endif %}
+  </div>
+
+  {% if can_review %}
+  <form method="POST" action="{{ url_for('store.review_submit') }}" enctype="multipart/form-data" class="store-review-form" id="write-review" hidden>
+    <input type="hidden" name="csrf_token" value="{{ review_csrf_token }}">
+    <input type="hidden" name="item_type" value="{{ item_type }}">
+    <input type="hidden" name="item_id" value="{{ product['id'] }}">
+    <h3>Write a Review</h3>
+    <label>Your Rating</label>
+    <div class="store-review-star-input" id="store-star-input">
+      {% for i in range(1,6) %}
+      <button type="button" class="store-star-btn" data-value="{{ i }}" aria-label="{{ i }} star">★</button>
+      {% endfor %}
+      <input type="hidden" name="rating" id="store-star-input-value" value="0">
+    </div>
+    <label for="review-title-input">Review Title</label>
+    <input type="text" name="title" id="review-title-input" maxlength="150" required>
+    <label for="review-body-input">Review Description</label>
+    <textarea name="body" id="review-body-input" rows="4" maxlength="4000" required></textarea>
+    {% if review_settings.review_allow_images == '1' %}
+    <label>Photos (optional, up to {{ 5 }})</label>
+    <input type="file" name="images" accept="image/png,image/jpeg,image/webp" multiple>
+    {% endif %}
+    {% if review_settings.review_allow_videos == '1' %}
+    <label>Video (optional, short clip)</label>
+    <input type="file" name="video" accept="video/mp4,video/webm,video/quicktime">
+    {% endif %}
+    <label class="store-review-anon"><input type="checkbox" name="is_anonymous"> Post anonymously (hide my name)</label>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Submit Review</button>
+      <button type="button" class="btn btn-secondary" id="store-cancel-review-btn">Cancel</button>
+    </div>
+  </form>
+  {% endif %}
+
+  <div class="store-reviews-controls">
+    <div class="store-reviews-sort">
+      <label for="review-sort">Sort by</label>
+      <select id="review-sort" onchange="location.href=this.value">
+        {% for key, label in [('recent','Most Recent'), ('highest','Highest Rating'), ('lowest','Lowest Rating'), ('helpful','Most Helpful')] %}
+        <option value="{{ review_link(sort=key) }}" {{ 'selected' if review_sort == key else '' }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="store-reviews-filters">
+      <a href="{{ review_link(rating=0, photos=0) }}" class="store-filter-chip{{ ' active' if not review_rating_filter and not review_photos_only else '' }}">All</a>
+      {% for n in [5,4,3,2,1] %}
+      <a href="{{ review_link(rating=n) }}" class="store-filter-chip{{ ' active' if review_rating_filter == n|string else '' }}">{{ n }}★</a>
+      {% endfor %}
+      <a href="{{ review_link(photos=1) }}" class="store-filter-chip{{ ' active' if review_photos_only else '' }}">With Photos</a>
+    </div>
+  </div>
+
+  <div class="store-reviews-list">
+    {% if not reviews %}
+    <p class="store-empty">No reviews match this filter{% if review_rating_filter or review_photos_only %} - <a href="{{ review_link(rating=0, photos=0) }}">clear filters</a>{% endif %}.</p>
+    {% endif %}
+    {% for item in reviews %}
+    {% set r = item.review %}
+    <div class="store-review-card" id="review-{{ r['id'] }}">
+      <div class="store-review-card-head">
+        <span class="review-stars-display" aria-label="{{ r['rating'] }} out of 5 stars">{% for i in range(1,6) %}<span class="star{{ ' filled' if i <= r['rating'] else '' }}">★</span>{% endfor %}</span>
+        {% if r['is_verified_purchase'] %}<span class="store-verified-badge">&#10003; Verified Purchase</span>{% endif %}
+      </div>
+      <div class="store-review-title">{{ r['title'] }}</div>
+      <div class="store-review-body">{{ r['body'] }}</div>
+      {% if item.images %}
+      <div class="store-review-photos">
+        {% for img in item.images %}
+        <img src="{{ url_for('static', filename=img['file_path']) }}" alt="Review photo" class="store-review-photo-thumb"
+             data-review-images="{{ item.images|map(attribute='file_path')|list|join(',') }}" data-index="{{ loop.index0 }}" loading="lazy">
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% if item.videos %}
+      <div class="store-review-videos">
+        {% for v in item.videos %}
+        <video controls preload="metadata" class="store-review-video"><source src="{{ url_for('static', filename=v['file_path']) }}"></video>
+        {% endfor %}
+      </div>
+      {% endif %}
+      <div class="store-review-meta">
+        <span class="store-review-author">{{ r['display_name'] or 'Anonymous' }}</span>
+        <span class="store-review-date">{{ r['created_at'][:10] }}{% if r['edited_at'] %} (edited){% endif %}</span>
+      </div>
+      {% if r['admin_reply'] %}
+      <div class="store-review-admin-reply"><strong>{{ shop_name }} replied:</strong> {{ r['admin_reply'] }}</div>
+      {% endif %}
+      <form method="POST" action="{{ url_for('store.review_helpful', review_id=r['id']) }}" class="store-review-helpful-form">
+        <input type="hidden" name="csrf_token" value="{{ review_csrf_token }}">
+        <button type="submit" class="store-helpful-btn{{ ' voted' if item.voted_helpful else '' }}" {{ 'disabled' if item.voted_helpful else '' }}>
+          &#128077; Helpful{% if r['helpful_count'] %} ({{ r['helpful_count'] }}){% endif %}
+        </button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if review_total_pages > 1 %}
+  <div class="store-reviews-pagination">
+    {% for p in range(1, review_total_pages + 1) %}
+    <a href="{{ review_link(page=p) }}" class="store-page-link{{ ' active' if p == review_page else '' }}">{{ p }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+</section>
+
+<div class="store-lightbox" id="review-lightbox" hidden>
+  <div class="store-lightbox-stage">
+    <img id="review-lightbox-img" class="store-lightbox-img active" src="" alt="Review photo">
+  </div>
+  <button type="button" class="store-lightbox-close" id="review-lightbox-close" aria-label="Close">&times;</button>
+  <button type="button" class="store-lightbox-arrow store-lightbox-prev" id="review-lightbox-prev" aria-label="Previous image">&#10094;</button>
+  <button type="button" class="store-lightbox-arrow store-lightbox-next" id="review-lightbox-next" aria-label="Next image">&#10095;</button>
+</div>
+
+{% if just_submitted %}
+<div class="store-modal-backdrop" id="reviewThankYouModal">
+  <div class="store-modal">
+    <div class="store-modal-stars">⭐⭐⭐⭐⭐</div>
+    <h3>Thank you for reviewing this product!</h3>
+    <p>We're happy you shared your experience.</p>
+    {% if show_google_popup and review_settings.google_review_url %}
+    <p>Would you also like to review our shop on Google?</p>
+    <div class="store-modal-actions">
+      <a href="{{ review_settings.google_review_url }}" target="_blank" rel="noopener" class="btn btn-primary" id="leaveGoogleReviewBtn">Leave a Google Review</a>
+      <button type="button" class="btn btn-secondary" id="maybeLaterBtn">Maybe Later</button>
+    </div>
+    {% else %}
+    <div class="store-modal-actions">
+      <button type="button" class="btn btn-primary" id="maybeLaterBtn">Close</button>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<script>
+(function () {
+  // ----- star rating input -----
+  var starWrap = document.getElementById("store-star-input");
+  if (starWrap) {
+    var starBtns = Array.from(starWrap.querySelectorAll(".store-star-btn"));
+    var starValue = document.getElementById("store-star-input-value");
+    function paintStars(value) {
+      starBtns.forEach(function (b) { b.classList.toggle("filled", parseInt(b.dataset.value, 10) <= value); });
+    }
+    starBtns.forEach(function (b) {
+      b.addEventListener("click", function () {
+        var v = parseInt(b.dataset.value, 10);
+        starValue.value = v;
+        paintStars(v);
+      });
+    });
+  }
+
+  // ----- write-a-review form toggle -----
+  var writeBtn = document.getElementById("store-write-review-btn");
+  var cancelBtn = document.getElementById("store-cancel-review-btn");
+  var form = document.getElementById("write-review");
+  if (writeBtn && form) {
+    writeBtn.addEventListener("click", function () {
+      form.hidden = false;
+      writeBtn.hidden = true;
+      form.scrollIntoView({ block: "center", behavior: "smooth" });
+    });
+  }
+  if (cancelBtn && form) {
+    cancelBtn.addEventListener("click", function () {
+      form.hidden = true;
+      if (writeBtn) writeBtn.hidden = false;
+    });
+  }
+  {% if just_submitted %}
+  if (form) { form.hidden = true; }
+  if (writeBtn) { writeBtn.hidden = false; }
+  {% endif %}
+  if (window.location.hash === "#write-review" && writeBtn && form) {
+    form.hidden = false;
+    writeBtn.hidden = true;
+    setTimeout(function () { form.scrollIntoView({ block: "center" }); }, 50);
+  }
+
+  // ----- review photo lightbox -----
+  var lb = document.getElementById("review-lightbox");
+  var lbImg = document.getElementById("review-lightbox-img");
+  var lbClose = document.getElementById("review-lightbox-close");
+  var lbPrev = document.getElementById("review-lightbox-prev");
+  var lbNext = document.getElementById("review-lightbox-next");
+  var currentPaths = [];
+  var currentIndex = 0;
+  function showLb(index) {
+    if (!currentPaths.length) return;
+    currentIndex = ((index % currentPaths.length) + currentPaths.length) % currentPaths.length;
+    lbImg.src = "{{ url_for('static', filename='') }}" + currentPaths[currentIndex];
+  }
+  document.querySelectorAll(".store-review-photo-thumb").forEach(function (img) {
+    img.addEventListener("click", function () {
+      currentPaths = img.dataset.reviewImages.split(",");
+      showLb(parseInt(img.dataset.index, 10));
+      lb.hidden = false;
+      document.body.style.overflow = "hidden";
+    });
+  });
+  function closeLb() { lb.hidden = true; document.body.style.overflow = ""; }
+  if (lbClose) lbClose.addEventListener("click", closeLb);
+  if (lb) lb.addEventListener("click", function (e) { if (e.target === lb) closeLb(); });
+  if (lbPrev) lbPrev.addEventListener("click", function () { showLb(currentIndex - 1); });
+  if (lbNext) lbNext.addEventListener("click", function () { showLb(currentIndex + 1); });
+
+  // ----- Thank You / Google review popup -----
+  var modal = document.getElementById("reviewThankYouModal");
+  var maybeLater = document.getElementById("maybeLaterBtn");
+  var leaveGoogle = document.getElementById("leaveGoogleReviewBtn");
+  function closeModal() { if (modal) modal.remove(); }
+  if (maybeLater) maybeLater.addEventListener("click", closeModal);
+  if (leaveGoogle) leaveGoogle.addEventListener("click", function () { setTimeout(closeModal, 300); });
+  if (modal) modal.addEventListener("click", function (e) { if (e.target === modal) closeModal(); });
+})();
+</script>
+{% endblock %}

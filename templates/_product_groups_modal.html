@@ -1,0 +1,36 @@
+<!--
+  Shared "Product Groups" popup, included from both templates/inventory/frames.html
+  and templates/inventory/contacts.html (per the user's request to have one shared
+  button/popup reachable from both pages rather than a separate sidebar page).
+
+  It loads the existing, full-featured Product Groups pages (list -> new/edit ->
+  manage -> attach/detach) completely unchanged inside an <iframe> with
+  ?embed=1, which just tells base.html to hide the sidebar (see
+  routes/product_groups.py's _embed() helper and base.html's embed guard
+  around the sidebar &lt;aside&gt; element).
+
+  Trigger markup expected on the including page:
+    <button type="button" class="btn btn-secondary" onclick="openProductGroupsModal()">Product Groups</button>
+-->
+<div class="modal-overlay hidden" id="product-groups-modal-overlay">
+  <div class="pg-modal-box">
+    <div class="pg-modal-header">
+      <h2>Product Groups</h2>
+      <button type="button" class="pg-modal-close" onclick="closeProductGroupsModal()" aria-label="Close">&times;</button>
+    </div>
+    <iframe id="product-groups-modal-frame" src="about:blank" title="Product Groups"></iframe>
+  </div>
+</div>
+<script>
+function openProductGroupsModal() {
+  var overlay = document.getElementById('product-groups-modal-overlay');
+  var frame = document.getElementById('product-groups-modal-frame');
+  if (frame.getAttribute('src') === 'about:blank') {
+    frame.src = "{{ url_for('product_groups.index', embed=1) }}";
+  }
+  overlay.classList.remove('hidden');
+}
+function closeProductGroupsModal() {
+  document.getElementById('product-groups-modal-overlay').classList.add('hidden');
+}
+</script>

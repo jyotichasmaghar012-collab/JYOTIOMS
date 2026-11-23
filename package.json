@@ -1,0 +1,22 @@
+{
+  "name": "optical-oms",
+  "version": "1.0.0",
+  "description": "Optical Shop OMS - Node.js (Express) port",
+  "main": "app.js",
+  "type": "commonjs",
+  "private": true,
+  "scripts": {
+    "start": "node app.js",
+    "dev": "node --watch app.js",
+    "backup": "node backup.js"
+  },
+  "engines": { "node": ">=22.5" },
+  "dependencies": {
+    "cookie-session": "^2.1.0",
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.1",
+    "nunjucks": "^3.2.4",
+    "pdfkit": "^0.15.0",
+    "sharp": "^0.33.5"
+  }
+}

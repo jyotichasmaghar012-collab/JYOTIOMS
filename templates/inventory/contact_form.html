@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit Contact Lens' if contact else 'Add Contact Lens' }}{% endblock %}
+{% block content %}
+<div class="page-header"><h1>{{ 'Edit Contact Lens' if contact else 'Add Contact Lens' }}</h1></div>
+<div class="panel form-panel">
+<form method="POST" enctype="multipart/form-data" data-ajax-save>
+  {% if branches is not none %}
+  <label>Branch *</label>
+  <select name="branch_id" required>
+    <option value="">-- Select Branch --</option>
+    {% for b in branches %}
+    <option value="{{ b['id'] }}" {{ 'selected' if default_branch_id == b['id'] else '' }}>{{ b['name'] }}</option>
+    {% endfor %}
+  </select>
+  {% endif %}
+  <label>Brand *</label>
+  <input type="text" name="brand" required value="{{ contact['brand'] if contact else '' }}">
+  <label>Type (e.g. Daily, Monthly, Colored)</label>
+  <input type="text" name="lens_type" value="{{ contact['lens_type'] if contact else '' }}">
+  <label>Power</label>
+  <input type="text" name="power" value="{{ contact['power'] if contact else '' }}">
+  <label>Gender *</label>
+  <select name="gender" required>
+    {% set selected_gender = (form.get('gender', 'Unisex') if form else (contact['gender'] if contact and contact['gender'] else 'Unisex')) %}
+    {% for g in ['Men', 'Women', 'Kids', 'Unisex'] %}
+    <option value="{{ g }}" {{ 'selected' if selected_gender == g else '' }}>{{ g }}</option>
+    {% endfor %}
+  </select>
+  <label>Selling Price *</label>
+  <input type="number" step="0.01" name="selling_price" required value="{{ contact['selling_price'] if contact else 0 }}">
+  <div class="form-row">
+    <div>
+      <label>Stock Quantity</label>
+      <input type="number" name="stock_qty" value="{{ contact['stock_qty'] if contact else 0 }}">
+    </div>
+    <div>
+      <label>Low Stock Alert Threshold</label>
+      <input type="number" name="low_stock_threshold" value="{{ contact['low_stock_threshold'] if contact else 2 }}">
+    </div>
+  </div>
+  <h2 class="section-title">Online Store</h2>
+  <label class="checkbox-label">
+    <input type="checkbox" name="online_visible" value="1" {{ 'checked' if contact and contact['online_visible'] else '' }}>
+    Show on online store (customers will be able to view/order this on the website)
+  </label>
+  <label class="checkbox-label">
+    <input type="checkbox" name="is_best_seller" value="1" {{ 'checked' if contact and contact['is_best_seller'] else '' }}>
+    Best Seller (shows in the homepage Best Sellers slider)
+  </label>
+  <label class="checkbox-label">
+    <input type="checkbox" name="is_new_arrival" value="1" {{ 'checked' if contact and contact['is_new_arrival'] else '' }}>
+    New Arrival (shows in the homepage New Arrivals slider)
+  </label>
+  <label class="checkbox-label">
+    <input type="checkbox" name="is_featured" value="1" {{ 'checked' if contact and contact['is_featured'] else '' }}>
+    Featured (shows in the homepage Featured Products slider)
+  </label>
+  {% if not contact %}
+  <label>Product Photo</label>
+  <input type="file" name="image" accept="image/*">
+  <p class="field-hint">You can add more photos to the gallery after saving.</p>
+  {% endif %}
+  <label>Online Description (optional)</label>
+  <textarea name="online_description" rows="2" placeholder="Short description customers will see">{{ (contact['online_description'] if contact else '') or '' }}</textarea>
+
+  <h2 class="section-title">SEO (optional)</h2>
+  <div class="form-row">
+    <div>
+      <label>Meta Title</label>
+      <input type="text" name="meta_title" maxlength="70" value="{{ (contact['meta_title'] if contact else '') or '' }}" placeholder="Defaults to Brand + Lens Type">
+    </div>
+    <div>
+      <label>URL Slug</label>
+      <input type="text" name="slug" value="{{ (contact['slug'] if contact else '') or '' }}" placeholder="e.g. acuvue-oasys-daily">
+    </div>
+  </div>
+  <label>Meta Description</label>
+  <textarea name="meta_description" rows="2" maxlength="200" placeholder="Shown in Google search results (optional)">{{ (contact['meta_description'] if contact else '') or '' }}</textarea>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a href="{{ url_for('inventory.contacts_index') }}" class="btn btn-secondary">Cancel</a>
+  </div>
+</form>
+
+{% if contact %}
+{% set item_type = 'contact_lens' %}
+{% set item_id = contact['id'] %}
+{% include "inventory/_gallery_manager.html" %}
+{% endif %}
+</div>
+{% endblock %}

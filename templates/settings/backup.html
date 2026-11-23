@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Backup & Data{% endblock %}
+{% block content %}
+<div class="page-header"><h1>Backup &amp; Data</h1></div>
+
+<div class="panel form-panel">
+  <h2>Manual Backup</h2>
+  <p class="muted">
+    This button instantly downloads a copy of all your data (customers, orders, invoices, inventory - everything)
+    as a file. Save it on your computer, Google Drive, or anywhere safe.
+  </p>
+  <a href="{{ url_for('settings.backup_download') }}" class="btn btn-primary">⬇ Download Backup Now</a>
+</div>
+
+<div class="panel">
+  <h2>Automatic Daily Backups</h2>
+  <p class="muted">
+    If you've set up <code>backup.py</code> as a daily scheduled task in PythonAnywhere's "Tasks" tab,
+    its backups will show up here (on the server itself, in the <code>data/backups/</code> folder):
+  </p>
+  {% if files %}
+  <table class="table small">
+    <thead><tr><th>Backup File</th></tr></thead>
+    <tbody>
+    {% for f in files %}
+      <tr><td>{{ f }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No automatic backup has been created yet. See the setup steps in the README.</p>
+  {% endif %}
+</div>
+{% endblock %}

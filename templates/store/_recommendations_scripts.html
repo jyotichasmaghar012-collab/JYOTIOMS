@@ -1,0 +1,189 @@
+{# Scripts for the "You May Also Like" section - included from the
+   {% block scripts %} of cart.html and checkout.html (never inline in the
+   body) so Swiper is guaranteed loaded before this runs, and so it stays
+   out of the way of each page's own bottom-of-body scripts. A no-op if the
+   section wasn't rendered (recommended_products was empty) since every
+   selector below just finds nothing and every handler is a no-op. #}
+{% if recommended_products %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Swiper/14.0.5/swiper-bundle.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Swiper/14.0.5/swiper-bundle.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  var recoEl = document.querySelector(".store-reco-swiper");
+  if (!recoEl) return;
+
+  // Swiper itself is optional at runtime - if the CDN request for it was
+  // ever blocked (ad-blocker, restrictive network), the cards still show in
+  // a plain responsive row via the CSS fallback (see style.css), and
+  // everything below this guard (Add to Cart AJAX, Quick View, toast) still
+  // needs to work regardless, so it's intentionally NOT behind this check.
+  if (typeof Swiper !== "undefined") {
+    new Swiper(recoEl, {
+      slidesPerView: 1,
+      spaceBetween: 16,
+      loop: true,
+      autoplay: { delay: 3500, disableOnInteraction: false },
+      navigation: {
+        nextEl: recoEl.querySelector(".swiper-button-next"),
+        prevEl: recoEl.querySelector(".swiper-button-prev"),
+      },
+      pagination: { el: recoEl.querySelector(".swiper-pagination"), clickable: true },
+      breakpoints: {
+        0: { slidesPerView: 1 },
+        576: { slidesPerView: 2 },
+        900: { slidesPerView: 3 },
+        1200: { slidesPerView: 4 },
+      },
+    });
+  }
+
+  var CART_ADD_URL = "{{ url_for('store.cart_add') }}";
+  var QUICKVIEW_URL_TEMPLATE = "{{ url_for('store.product_quick_view', item_type='ITEMTYPE', item_id=999999) }}";
+
+  var toastEl = document.getElementById("store-toast");
+  var toastTimer = null;
+  function showToast(message, isError) {
+    if (!toastEl) return;
+    toastEl.textContent = message;
+    toastEl.hidden = false;
+    toastEl.className = "store-toast is-visible" + (isError ? " is-error" : "");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.classList.remove("is-visible"); }, 2600);
+  }
+
+  function updateCartBadge(count) {
+    var cartLink = document.querySelector(".store-cart-link");
+    if (!cartLink) return;
+    var badge = cartLink.querySelector(".store-cart-badge");
+    if (count > 0) {
+      if (!badge) {
+        badge = document.createElement("span");
+        badge.className = "store-cart-badge";
+        cartLink.appendChild(badge);
+      }
+      badge.textContent = count;
+    } else if (badge) {
+      badge.remove();
+    }
+  }
+
+  function addToCart(itemType, itemId, btn) {
+    if (btn) btn.disabled = true;
+    var body = "item_type=" + encodeURIComponent(itemType) + "&item_id=" + encodeURIComponent(itemId) + "&qty=1";
+    fetch(CART_ADD_URL, {
+      method: "POST",
+      headers: {
+        "X-Requested-With": "XMLHttpRequest",
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: body,
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.ok) {
+          showToast(data.message || "Product added to cart.");
+          updateCartBadge(data.cart_count);
+        } else {
+          showToast(data.error || "Could not add to cart.", true);
+        }
+      })
+      .catch(function () { showToast("Could not add to cart. Please try again.", true); })
+      .finally(function () { if (btn) btn.disabled = false; });
+  }
+
+  function wireAddToCartButtons(scope) {
+    scope.querySelectorAll(".store-reco-add-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        addToCart(btn.dataset.itemType, btn.dataset.itemId, btn);
+      });
+    });
+  }
+  wireAddToCartButtons(document);
+
+  // ---- Quick View modal ----
+  var backdrop = document.getElementById("reco-quickview-backdrop");
+  var qvBody = document.getElementById("reco-quickview-body");
+  var qvClose = document.getElementById("reco-quickview-close");
+
+  function closeQuickView() { if (backdrop) backdrop.hidden = true; }
+  if (qvClose) qvClose.addEventListener("click", closeQuickView);
+  if (backdrop) {
+    backdrop.addEventListener("click", function (e) { if (e.target === backdrop) closeQuickView(); });
+  }
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && backdrop && !backdrop.hidden) closeQuickView();
+  });
+
+  function escapeHtml(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function renderQuickView(data) {
+    var thumbs = (data.images || []).map(function (src, i) {
+      return '<img src="' + src + '" class="store-quickview-thumb' + (i === 0 ? " active" : "") + '" data-src="' + src + '" alt="">';
+    }).join("");
+    var mainImg = data.images && data.images[0] ? data.images[0] : "";
+    var html = '<div class="store-quickview-gallery">';
+    if (mainImg) {
+      html += '<img id="quickview-main-img" class="store-quickview-main-img" src="' + mainImg + '" alt="">';
+    } else {
+      html += '<div class="store-card-noimg store-card-noimg-big">📷</div>';
+    }
+    if (data.images && data.images.length > 1) {
+      html += '<div class="store-quickview-thumbs">' + thumbs + '</div>';
+    }
+    html += '</div><div class="store-quickview-info">';
+    html += '<h3>' + escapeHtml(data.brand) + (data.frame_id ? " " + escapeHtml(data.frame_id) : "") + '</h3>';
+    if (data.frame_id) html += '<div class="store-detail-row"><span class="store-detail-label">Frame ID:</span> ' + escapeHtml(data.frame_id) + '</div>';
+    if (data.color) html += '<div class="store-detail-row"><span class="store-detail-label">Color:</span> ' + escapeHtml(data.color) + '</div>';
+    if (data.size) html += '<div class="store-detail-row"><span class="store-detail-label">Size:</span> ' + escapeHtml(data.size) + '</div>';
+    html += '<div class="store-detail-row store-detail-row-emphasis"><span class="store-detail-label">Price:</span> ' + escapeHtml(data.currency) + ' ' + Math.round(data.price) + '</div>';
+    if (data.description) html += '<div class="store-detail-row store-detail-description">' + escapeHtml(data.description) + '</div>';
+    html += '<div class="store-detail-row store-product-stock"><span class="store-detail-label">Stock:</span> ' + escapeHtml(data.stock_label) + '</div>';
+    html += '<div class="store-quickview-actions">';
+    if (data.stock_qty > 0) {
+      html += '<button type="button" class="btn btn-primary store-reco-add-btn" data-item-type="' + data.item_type + '" data-item-id="' + data.item_id + '">Add to Cart</button>';
+    }
+    html += '<a href="' + data.detail_url + '" class="btn btn-secondary">View Full Details</a>';
+    html += '</div></div>';
+    qvBody.innerHTML = html;
+
+    wireAddToCartButtons(qvBody);
+    qvBody.querySelectorAll(".store-quickview-thumb").forEach(function (t) {
+      t.addEventListener("click", function () {
+        var mainEl = document.getElementById("quickview-main-img");
+        if (mainEl) mainEl.src = t.dataset.src;
+        qvBody.querySelectorAll(".store-quickview-thumb").forEach(function (x) { x.classList.remove("active"); });
+        t.classList.add("active");
+      });
+    });
+  }
+
+  document.querySelectorAll(".store-reco-quickview-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var itemType = btn.dataset.itemType;
+      var itemId = btn.dataset.itemId;
+      if (!backdrop || !qvBody) return;
+      backdrop.hidden = false;
+      qvBody.innerHTML = '<div class="store-quickview-loading">Loading&hellip;</div>';
+      var url = QUICKVIEW_URL_TEMPLATE.replace("ITEMTYPE", itemType).replace("999999", itemId);
+      fetch(url)
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (!data.ok) {
+            qvBody.innerHTML = "<p>" + escapeHtml(data.error || "Could not load product.") + "</p>";
+            return;
+          }
+          renderQuickView(data);
+        })
+        .catch(function () {
+          qvBody.innerHTML = "<p>Could not load product. Please try again.</p>";
+        });
+    });
+  });
+})();
+</script>
+{% endif %}

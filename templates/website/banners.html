@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Homepage Banners{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Homepage Banners</h1>
+  <div class="page-actions">
+    <a href="{{ url_for('banners.new') }}" class="btn btn-primary btn-small">+ Add Banner</a>
+  </div>
+</div>
+
+<div class="panel">
+  {% if banners %}
+  <p class="muted">Drag rows by the ⠿ handle to reorder. Only <strong>Active</strong> banners within their Start/End Date window show on the homepage slider.</p>
+  <table class="table banner-table" id="banner-table">
+    <thead><tr><th></th><th>Preview</th><th>Title</th><th>Heading</th><th>Status</th><th>Dates</th><th></th></tr></thead>
+    <tbody id="banner-table-body">
+    {% for b in banners %}
+    <tr draggable="true" data-id="{{ b['id'] }}" class="banner-row">
+      <td class="banner-drag-handle" title="Drag to reorder">⠿</td>
+      <td>
+        <div class="banner-thumb">
+          <img src="{{ url_for('static', filename=b['desktop_image_path']) }}" alt="{{ b['title'] }}">
+        </div>
+      </td>
+      <td>{{ b['title'] }}</td>
+      <td>{{ b['heading'] or '-' }}</td>
+      <td>
+        {% if b['is_active'] %}<span class="badge status-paid">Active</span>
+        {% else %}<span class="badge status-due">Inactive</span>{% endif %}
+      </td>
+      <td class="muted" style="font-size:12px;">
+        {% if b['start_date'] or b['end_date'] %}{{ b['start_date'] or '...' }} &rarr; {{ b['end_date'] or '...' }}{% else %}Always{% endif %}
+      </td>
+      <td class="banner-row-actions">
+        <a href="{{ url_for('banners.edit', banner_id=b['id']) }}" class="btn btn-small btn-secondary">Edit</a>
+        <form method="POST" action="{{ url_for('banners.toggle', banner_id=b['id']) }}" style="display:inline" data-ajax-save>
+          <button type="submit" class="btn btn-small {{ 'btn-secondary' if b['is_active'] else 'btn-primary' }}">
+            {{ 'Deactivate' if b['is_active'] else 'Activate' }}
+          </button>
+        </form>
+        <form method="POST" action="{{ url_for('banners.delete', banner_id=b['id']) }}" style="display:inline" onsubmit="return confirm('Delete this banner? This cannot be undone.');" data-ajax-save>
+          <button type="submit" class="btn btn-small btn-danger">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No banners yet - <a href="{{ url_for('banners.new') }}">add the first one</a>. Until then the homepage shows its default hero.</p>
+  {% endif %}
+</div>
+
+<script>
+(function () {
+  var tbody = document.getElementById("banner-table-body");
+  if (!tbody) return;
+  var dragEl = null;
+
+  tbody.querySelectorAll(".banner-row").forEach(function (row) {
+    row.addEventListener("dragstart", function () { dragEl = row; row.classList.add("dragging"); });
+    row.addEventListener("dragend", function () {
+      row.classList.remove("dragging");
+      var order = Array.from(tbody.querySelectorAll(".banner-row")).map(function (r) { return r.dataset.id; });
+      fetch("{{ url_for('banners.reorder') }}", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order: order }),
+      });
+    });
+    row.addEventListener("dragover", function (e) {
+      e.preventDefault();
+      if (!dragEl || dragEl === row) return;
+      var rect = row.getBoundingClientRect();
+      var after = (e.clientY - rect.top) > rect.height / 2;
+      tbody.insertBefore(dragEl, after ? row.nextSibling : row);
+    });
+  });
+})();
+</script>
+{% endblock %}

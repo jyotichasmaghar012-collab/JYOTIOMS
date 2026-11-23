@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit Supplier' if supplier else 'New Supplier' }}{% endblock %}
+{% block content %}
+<div class="page-header"><h1>{{ 'Edit Supplier' if supplier else 'New Supplier' }}</h1></div>
+<div class="panel form-panel">
+<form method="POST" data-ajax-save>
+  <label>Name *</label>
+  <input type="text" name="name" required value="{{ supplier['name'] if supplier else '' }}">
+  <label>Phone</label>
+  <input type="text" name="phone" value="{{ supplier['phone'] if supplier else '' }}">
+  <label>Email</label>
+  <input type="email" name="email" value="{{ supplier['email'] if supplier else '' }}">
+  <label>Address</label>
+  <textarea name="address" rows="2">{{ supplier['address'] if supplier else '' }}</textarea>
+  <label>Notes</label>
+  <textarea name="notes" rows="2">{{ supplier['notes'] if supplier else '' }}</textarea>
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a href="{{ url_for('suppliers.index') }}" class="btn btn-secondary">Cancel</a>
+  </div>
+</form>
+</div>
+{% endblock %}

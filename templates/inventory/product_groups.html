@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Product Groups{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Product Groups</h1>
+  <div class="page-actions">
+    <a href="{{ url_for('product_groups.new', embed=embed) }}" class="btn btn-primary">+ New Product Group</a>
+  </div>
+</div>
+{% if not embed %}
+<p class="muted">
+  Group different colors of the same frame into one product with a "Parent" listing (shared brand/category/gender/
+  description) and color variants underneath - similar to how Amazon or Lenskart show one product page with color
+  swatches. Grouping is manual: nothing is merged automatically. Price and stock always stay per color variant.
+</p>
+{% endif %}
+
+<div class="panel">
+  <div class="panel-header-row">
+    <h2>All Product Groups</h2>
+    <form method="GET" class="attr-search-form">
+      <input type="text" name="q" value="{{ q }}" placeholder="Search product groups...">
+      <input type="hidden" name="embed" value="{{ embed }}">
+      <button type="submit" class="btn btn-small btn-secondary">Search</button>
+      {% if q %}<a href="{{ url_for('product_groups.index', embed=embed) }}" class="btn btn-small">Clear</a>{% endif %}
+    </form>
+  </div>
+
+  {% if groups %}
+  <table class="table">
+    <thead><tr><th>Name</th><th>Brand</th><th>Variants</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for grp in groups %}
+    <tr>
+      <td><a href="{{ url_for('product_groups.manage', group_id=grp['id'], embed=embed) }}">{{ grp['name'] }}</a></td>
+      <td>{{ grp['brand_name'] or '—' }}</td>
+      <td>{{ grp['variant_count'] }} color{{ 's' if grp['variant_count'] != 1 else '' }}</td>
+      <td>
+        {% if grp['is_active'] %}
+        <span class="badge status-paid">Active</span>
+        {% else %}
+        <span class="badge status-due">Paused</span>
+        {% endif %}
+      </td>
+      <td>
+        <a href="{{ url_for('product_groups.manage', group_id=grp['id'], embed=embed) }}" class="btn btn-small btn-secondary">Manage Variants</a>
+        <a href="{{ url_for('product_groups.edit', group_id=grp['id'], embed=embed) }}" class="btn btn-small btn-secondary">Edit</a>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  {% if total_pages > 1 %}
+  <div class="attr-pagination">
+    {% for p in range(1, total_pages + 1) %}
+    <a href="{{ url_for('product_groups.index', q=q, page=p, embed=embed) }}" class="attr-page-link {{ 'active' if p == page else '' }}">{{ p }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% else %}
+  <p class="empty">
+    {% if q %}No product groups match "{{ q }}".{% else %}No product groups yet - create one, then attach existing frame colors to it as variants.{% endif %}
+  </p>
+  {% endif %}
+</div>
+{% endblock %}

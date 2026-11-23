@@ -1,0 +1,985 @@
+{% extends "store/base.html" %}
+{% block title %}{% if category_seo and category_seo['meta_title'] %}{{ category_seo['meta_title'] }}{% else %}{{ shop_name }} - Online Store{% endif %}{% endblock %}
+{% block extra_head %}
+{% if category_seo and category_seo['meta_description'] %}<meta name="description" content="{{ category_seo['meta_description'] }}">{% endif %}
+{% endblock %}
+{% block store_content %}
+{% macro detail_row(label, value) %}{% if value %}<div class="store-card-detail"><span class="store-card-detail-label">{{ label }}:</span> {{ value }}</div>{% endif %}{% endmacro %}
+{# Card image gallery (Amazon/Flipkart/Lenskart-style): every listing card
+   gets its featured image PLUS every product_images row for that item
+   (frame_galleries/contact_galleries, from routes/storefront.py's
+   _gallery_images_for). A product with only one image on file renders
+   exactly as before - a single static image, no thumbnail strip. A
+   product with 2+ images gets a stack of images (all in the DOM, toggled
+   via the "active" class - same pattern as the single-product page's
+   gallery) plus up to 5 clickable thumbnails below it; a 6th+ image
+   collapses into a "+N" counter instead of more thumbnails. #}
+{% macro card_images(paths, alt) %}
+{% if paths %}
+{% for path in paths %}
+<img class="store-card-gallery-img{{ ' active' if loop.first else '' }}" data-index="{{ loop.index0 }}"
+     src="{{ url_for('static', filename=path) }}" alt="{{ alt }}"{% if not loop.first %} loading="lazy"{% endif %}>
+{% endfor %}
+{% else %}<div class="store-card-noimg">📷</div>{% endif %}
+{% endmacro %}
+{% macro card_thumbs(paths) %}
+{% if paths|length > 1 %}
+<div class="store-card-thumbs">
+  {% for path in paths[:5] %}
+  <button type="button" class="store-card-thumb{{ ' active' if loop.first else '' }}" data-index="{{ loop.index0 }}"
+          style="background-image:url('{{ url_for('static', filename=path) }}')" aria-label="View image {{ loop.index }}"></button>
+  {% endfor %}
+  {% if paths|length > 5 %}<span class="store-card-thumb-more">+{{ paths|length - 5 }}</span>{% endif %}
+</div>
+{% endif %}
+{% endmacro %}
+
+{% if search_query %}
+<div class="store-search-results-bar">
+  <div>Search results for "<strong>{{ search_query }}</strong>"</div>
+  <a href="{{ url_for('store.home', gender=(gender if gender != 'all' else none)) }}" class="store-clear-search">&times; Clear search</a>
+</div>
+{% endif %}
+
+{% if brand %}
+<div class="store-search-results-bar">
+  <div>Brand: <strong>{{ brand|join(', ') }}</strong></div>
+  <a href="{{ url_for('store.home', cat=(category if category != 'all' else none), gender=(gender if gender != 'all' else none), q=(search_query or none)) }}" class="store-clear-search">&times; Clear brand filter</a>
+</div>
+{% endif %}
+
+{% if not search_query %}
+
+{% if banners %}
+<div class="store-banner-slider" id="homepage-banner-slider">
+  <div class="store-banner-track" id="homepage-banner-track">
+    {% for b in banners %}
+    <div class="store-banner-slide">
+      <picture>
+        {% if b['mobile_image_path'] %}
+        <source media="(max-width: 767px)" srcset="{{ url_for('static', filename=b['mobile_image_path']) }}">
+        {% endif %}
+        {# All banner slides are part of the auto-advancing carousel and can
+           be scrolled into view within a few seconds of page load, so they
+           are loaded eagerly (no loading="lazy") - lazy-loading a slide that
+           autoplay is about to reveal caused a brief blank flash while the
+           browser decoded it mid-transition. #}
+        <img src="{{ url_for('static', filename=b['desktop_image_path']) }}" alt="{{ b['heading'] or b['title'] }}">
+      </picture>
+      {% if b['heading'] or b['subheading'] or b['button_text'] %}
+      <div class="store-banner-slide-content{{ ' has-overlay' if b['overlay_enabled'] else '' }}">
+        {% if b['heading'] %}<h1>{{ b['heading'] }}</h1>{% endif %}
+        {% if b['subheading'] %}<p>{{ b['subheading'] }}</p>{% endif %}
+        {% if b['button_text'] %}<a href="{{ b['button_url'] or '#store-catalog' }}" class="store-hero-cta">{{ b['button_text'] }}</a>{% endif %}
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% if banners|length > 1 %}
+  <button type="button" class="store-banner-arrow store-banner-prev" aria-label="Previous banner">&#10094;</button>
+  <button type="button" class="store-banner-arrow store-banner-next" aria-label="Next banner">&#10095;</button>
+  <div class="store-banner-dots" id="homepage-banner-dots">
+    {% for b in banners %}
+    <button type="button" class="store-banner-dot{{ ' active' if loop.first else '' }}" data-index="{{ loop.index0 }}" aria-label="Go to banner {{ loop.index }}"></button>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% else %}
+{% if banner_image %}
+{% if banner_link %}
+<a href="{{ banner_link }}" class="store-banner" target="_blank" rel="noopener">
+  <img src="{{ banner_image if banner_image.startswith('http') else url_for('static', filename=banner_image) }}" alt="{{ shop_name }} offer">
+</a>
+{% else %}
+<div class="store-banner">
+  <img src="{{ banner_image if banner_image.startswith('http') else url_for('static', filename=banner_image) }}" alt="{{ shop_name }} offer">
+</div>
+{% endif %}
+{% endif %}
+{% endif %}
+
+{# Wrapped so the AJAX filter script (bottom of this template) can swap just
+   this region's markup on click - it fetches the target URL, pulls the
+   matching #store-nav-region / #store-product-grid-region out of the
+   response, and replaces them in place via history.pushState, instead of a
+   full page navigation/reload. #}
+<div id="store-nav-region">
+{% set keep_cat = category if category != 'all' else none %}
+{% set keep_brand = brand or none %}
+<div class="store-gender-nav" id="store-gender-nav">
+  <a href="{{ url_for('store.home', cat=keep_cat, gender='all', brand=keep_brand) }}" class="store-gender-card store-gender-card-all{{ ' active' if gender == 'all' else '' }}">
+    <span class="store-gender-name">All</span>
+  </a>
+  <a href="{{ url_for('store.home', cat=keep_cat, gender='men', brand=keep_brand) }}" class="store-gender-card store-gender-card-men{{ ' active' if gender == 'men' else '' }}">
+    <span class="store-gender-name">Men</span>
+  </a>
+  <a href="{{ url_for('store.home', cat=keep_cat, gender='women', brand=keep_brand) }}" class="store-gender-card store-gender-card-women{{ ' active' if gender == 'women' else '' }}">
+    <span class="store-gender-name">Women</span>
+  </a>
+  <a href="{{ url_for('store.home', cat=keep_cat, gender='kids', brand=keep_brand) }}" class="store-gender-card store-gender-card-kids{{ ' active' if gender == 'kids' else '' }}">
+    <span class="store-gender-name">Kids</span>
+  </a>
+</div>
+</div>
+{% endif %}
+
+{% if side_posters.left or side_posters.right %}
+{% if side_posters.left %}
+<div class="store-side-poster store-side-poster-left">
+  {% if side_posters.left['link_url'] %}
+  <a href="{{ side_posters.left['link_url'] }}"><img src="{{ url_for('static', filename=side_posters.left['image_path']) }}" alt="" loading="lazy"></a>
+  {% else %}
+  <img src="{{ url_for('static', filename=side_posters.left['image_path']) }}" alt="" loading="lazy">
+  {% endif %}
+</div>
+{% endif %}
+{% if side_posters.right %}
+<div class="store-side-poster store-side-poster-right">
+  {% if side_posters.right['link_url'] %}
+  <a href="{{ side_posters.right['link_url'] }}"><img src="{{ url_for('static', filename=side_posters.right['image_path']) }}" alt="" loading="lazy"></a>
+  {% else %}
+  <img src="{{ url_for('static', filename=side_posters.right['image_path']) }}" alt="" loading="lazy">
+  {% endif %}
+</div>
+{% endif %}
+{% endif %}
+
+{% macro product_slider(items, title) %}
+{% if items %}
+<div class="store-slider-section">
+  <h2 class="store-section-title">{{ title }}</h2>
+  <div class="store-slider">
+    {% for item in items %}
+    <a href="{{ url_for('store.product_detail', item_type=item.item_type, item_id=item.id) }}" class="store-slider-card">
+      <div class="store-card-img">
+        {% if item.image_path %}
+        <img src="{{ url_for('static', filename=item.image_path) }}" alt="{{ item.title }}" loading="lazy">
+        {% else %}<div class="store-card-noimg">📷</div>{% endif %}
+      </div>
+      <div class="store-card-body">
+        <div class="store-card-title">{{ item.title }}</div>
+        <div class="store-card-price">{{ currency }} {{ '%.0f'|format(item.price) }}</div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endmacro %}
+
+{% if not search_query and not brand %}
+{% if showcase_categories %}
+<div class="store-slider-section">
+  <h2 class="store-section-title">Shop by Category</h2>
+  <div class="store-slider">
+    {% for cat in showcase_categories %}
+    <a href="{{ url_for('store.home', cat=cat['name']) }}" class="store-slider-card store-category-card">
+      <div class="store-card-img">
+        <img src="{{ url_for('static', filename=cat['image_path']) }}" alt="{{ cat['name'] }}" loading="lazy">
+      </div>
+      <div class="store-card-body">
+        <div class="store-card-title">{{ cat['name'] }}</div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{{ product_slider(best_sellers, 'Best Sellers') }}
+{{ product_slider(new_arrivals, 'New Arrivals') }}
+{{ product_slider(featured_products, 'Featured Products') }}
+
+{% if active_promotions %}
+<div class="store-slider-section">
+  <h2 class="store-section-title">Offers &amp; Promotions</h2>
+  <div class="store-promo-grid">
+    {% for p in active_promotions %}
+    <div class="store-promo-card">
+      <img src="{{ url_for('static', filename=p['image_path']) }}" alt="{{ p['title'] }}" loading="lazy">
+      <div class="store-promo-body">
+        <div class="store-promo-title">{{ p['title'] }}</div>
+        {% if p['description'] %}<div class="store-promo-desc">{{ p['description'] }}</div>{% endif %}
+        {% if p['button_text'] %}<a href="{{ p['button_url'] or '#store-catalog' }}" class="btn btn-primary btn-small">{{ p['button_text'] }}</a>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if showcase_brands %}
+<div class="store-slider-section">
+  <h2 class="store-section-title">Shop by Brand</h2>
+  <div class="store-brand-strip">
+    {% for b in showcase_brands %}
+    <a href="{{ url_for('store.home', brand=b['name']) }}" class="store-brand-logo-card">
+      {% if b['logo_path'] %}
+      <img src="{{ url_for('static', filename=b['logo_path']) }}" alt="{{ b['name'] }}" class="store-brand-logo-img">
+      {% else %}
+      <span class="store-brand-logo-fallback">🕶️</span>
+      {% endif %}
+      <span class="store-brand-logo-name">{{ b['name'] }}</span>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endif %}
+
+{# The old category-tabs row (removed) used to double as the scroll anchor
+   for the top-nav Brands/Offers links and the default hero banner CTA URL
+   (#store-catalog). Keep a zero-height anchor here so those links still
+   land just above the product grid instead of a dead fragment. #}
+<span id="store-catalog" aria-hidden="true"></span>
+
+{% set has_products = frames or contacts %}
+<div class="store-shop-layout{{ '' if has_products else ' store-shop-layout-empty' }}">
+{# Filter sidebar - a third AJAX-swappable region (see SIDEBAR_ID in the
+   script below), so it re-renders (checked boxes, current sort, and the
+   available_brands list itself) on every filter change exactly like
+   #store-nav-region / #store-product-grid-region already do. #}
+<aside id="store-filter-sidebar" class="store-filter-sidebar{{ '' if has_products else ' store-filter-sidebar-hidden' }}">
+  <button type="button" class="store-filter-toggle-btn" id="storeFilterToggleBtn" aria-expanded="false">
+    &#9776; Filters &amp; Sort
+  </button>
+  <div class="store-filter-panel" id="storeFilterPanel">
+    <div class="store-filter-group">
+      <label for="shop-sort-select" class="store-filter-group-label">Sort By</label>
+      <select name="sort" id="shop-sort-select" class="store-filter-select">
+        {% for key, label in sort_options.items() %}
+        <option value="{{ key }}" {{ 'selected' if sort == key else '' }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="store-filter-group">
+      <div class="store-filter-group-label">Price Range ({{ currency }})</div>
+      <div class="store-filter-price-row">
+        <input type="number" name="price_min" min="0" placeholder="Min" value="{{ price_min|int if price_min is not none else '' }}">
+        <span>&ndash;</span>
+        <input type="number" name="price_max" min="0" placeholder="Max" value="{{ price_max|int if price_max is not none else '' }}">
+      </div>
+      <button type="button" id="shop-filter-price-apply" class="btn btn-secondary btn-small">Apply</button>
+    </div>
+
+    {% if available_brands %}
+    <div class="store-filter-group">
+      <div class="store-filter-group-label">Brand</div>
+      <div class="store-filter-checklist">
+        {% for b in available_brands %}
+        <label class="store-filter-checkbox-label">
+          <input type="checkbox" name="brand" value="{{ b }}" {{ 'checked' if b in brand else '' }}>
+          {{ b }}
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if sort != 'brand' or price_min is not none or price_max is not none or brand %}
+    <a href="{{ url_for('store.home', cat=(category if category != 'all' else none), gender=(gender if gender != 'all' else none), q=(search_query or none)) }}" class="store-filter-clear-link">&times; Clear all filters</a>
+    {% endif %}
+  </div>
+</aside>
+
+{# Same AJAX-swap contract as #store-nav-region above: this id is looked up
+   in the fetched response and swapped in place, so choosing a gender or
+   category tab re-renders only the product list, not the whole page. #}
+<div id="store-product-grid-region">
+{% if not frames and not contacts %}
+<p class="store-empty">
+  {% if search_query %}No products matched "{{ search_query }}". Try a different search, or {{ ' ' }}
+  <a href="{{ url_for('store.home') }}">browse the full catalog</a>.
+  {% else %}No products are available online right now. They'll be here soon - contact the shop for details.{% endif %}
+</p>
+{% endif %}
+
+{% if frames %}
+<div class="store-grid">
+  {% for f in frames %}
+  {% set f_paths = frame_galleries.get(f['id']) or ([f['image_path']] if f['image_path'] else []) %}
+  <div class="store-card">
+    <a href="{{ url_for('store.product_detail', item_type='frame', item_id=f['id']) }}" class="store-card-link">
+      <div class="store-card-img{{ ' has-hover-img' if f_paths|length > 1 else '' }}" data-card-gallery>
+        {{ card_images(f_paths, f['brand']) }}
+      </div>
+      <div class="store-card-body">
+        <div class="store-card-title">{{ f['brand'] }} {{ f['model'] or '' }}</div>
+        <div class="store-card-details">
+          {{ detail_row('Brand', f['brand']) }}
+          {{ detail_row('Frame ID', f['model']) }}
+          {% if not frame_group_swatches.get(f['id']) %}{{ detail_row('Color', f['color']) }}{% endif %}
+        </div>
+        <div class="store-card-price">
+          {% if frame_group_price_from.get(f['id']) %}From {{ currency }} {{ '%.0f'|format(frame_group_price_from[f['id']]) }}
+          {% else %}{{ currency }} {{ '%.0f'|format(f['selling_price']) }}{% endif %}
+        </div>
+      </div>
+    </a>
+    {{ card_thumbs(f_paths) }}
+    {# Color variant swatches for a grouped product (Product Groups admin
+       feature) - deliberately OUTSIDE the <a> above since nested <a> tags
+       aren't valid HTML; each swatch links straight to that color's own
+       product page. Only rendered when more than one color of this group is
+       currently visible/in-stock - a lone swatch would be redundant. #}
+    {% if frame_group_swatches.get(f['id']) and frame_group_swatches[f['id']]|length > 1 %}
+    <div class="store-card-swatches">
+      {% for v in frame_group_swatches[f['id']] %}
+      <a href="{{ url_for('store.product_detail', item_type='frame', item_id=v['id']) }}"
+         class="store-card-swatch{{ ' active' if v['id'] == f['id'] else '' }}" title="{{ v['color'] or 'Color option' }}">
+        {% if v['image_path'] %}<img src="{{ url_for('static', filename=v['image_path']) }}" alt="{{ v['color'] or '' }}">{% else %}<span class="store-card-swatch-dot"></span>{% endif %}
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+    <div class="store-card-actions-row">
+      <form method="POST" action="{{ url_for('store.cart_add') }}" class="store-card-add-form">
+        <input type="hidden" name="item_type" value="frame">
+        <input type="hidden" name="item_id" value="{{ f['id'] }}">
+        <input type="hidden" name="qty" value="1">
+        <input type="hidden" name="next" value="{{ request.url }}">
+        <button type="submit" class="store-card-add-btn">🛒 Add to Cart</button>
+      </form>
+      <button type="button" class="store-card-quickview-btn" data-item-type="frame" data-item-id="{{ f['id'] }}" aria-label="Quick view {{ f['brand'] }} {{ f['model'] or '' }}" title="Quick View">👁</button>
+      <button type="button" class="store-card-wishlist-btn{{ ' active' if ('frame', f['id']) in wishlist_ids else '' }}" data-item-type="frame" data-item-id="{{ f['id'] }}" aria-label="{{ 'Remove from wishlist' if ('frame', f['id']) in wishlist_ids else 'Save to wishlist' }}" title="Wishlist">{{ '♥' if ('frame', f['id']) in wishlist_ids else '♡' }}</button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if contacts %}
+<h2 class="store-section-title">Contact Lenses</h2>
+<div class="store-grid">
+  {% for c in contacts %}
+  {% set c_paths = contact_galleries.get(c['id']) or ([c['image_path']] if c['image_path'] else []) %}
+  <div class="store-card">
+    <a href="{{ url_for('store.product_detail', item_type='contact_lens', item_id=c['id']) }}" class="store-card-link">
+      <div class="store-card-img{{ ' has-hover-img' if c_paths|length > 1 else '' }}" data-card-gallery>
+        {{ card_images(c_paths, c['brand']) }}
+      </div>
+      <div class="store-card-body">
+        <div class="store-card-title">{{ c['brand'] }}</div>
+        <div class="store-card-details">
+          {{ detail_row('Brand', c['brand']) }}
+          {{ detail_row('Lens Type', c['lens_type']) }}
+          {{ detail_row('Power', c['power']) }}
+        </div>
+        <div class="store-card-price">{{ currency }} {{ '%.0f'|format(c['selling_price']) }}</div>
+      </div>
+    </a>
+    {{ card_thumbs(c_paths) }}
+    <div class="store-card-actions-row">
+      <form method="POST" action="{{ url_for('store.cart_add') }}" class="store-card-add-form">
+        <input type="hidden" name="item_type" value="contact_lens">
+        <input type="hidden" name="item_id" value="{{ c['id'] }}">
+        <input type="hidden" name="qty" value="1">
+        <input type="hidden" name="next" value="{{ request.url }}">
+        <button type="submit" class="store-card-add-btn">🛒 Add to Cart</button>
+      </form>
+      <button type="button" class="store-card-quickview-btn" data-item-type="contact_lens" data-item-id="{{ c['id'] }}" aria-label="Quick view {{ c['brand'] }}" title="Quick View">👁</button>
+      <button type="button" class="store-card-wishlist-btn{{ ' active' if ('contact_lens', c['id']) in wishlist_ids else '' }}" data-item-type="contact_lens" data-item-id="{{ c['id'] }}" aria-label="{{ 'Remove from wishlist' if ('contact_lens', c['id']) in wishlist_ids else 'Save to wishlist' }}" title="Wishlist">{{ '♥' if ('contact_lens', c['id']) in wishlist_ids else '♡' }}</button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+</div>
+</div>
+
+{# Shop-grid Quick View modal (task #129) - reuses the existing
+   /store/product/<item_type>/<item_id>/quick-view JSON endpoint and the
+   .store-quickview-* CSS already shipped for the Cart/Checkout "You May
+   Also Like" Quick View (see store/_recommendations.html), but with its
+   own element ids (shop-quickview-*) so it never collides if that section
+   is ever added to this page too. Deliberately scoped to "this exact row
+   only" - no in-modal color/variant switching, matching the existing
+   endpoint's behaviour. #}
+<div class="store-modal-backdrop" id="shop-quickview-backdrop" hidden>
+  <div class="store-modal store-quickview-modal" role="dialog" aria-modal="true" aria-label="Quick View">
+    <button type="button" class="store-modal-close" id="shop-quickview-close" aria-label="Close">&times;</button>
+    <div id="shop-quickview-body" class="store-quickview-body">
+      <div class="store-quickview-loading">Loading&hellip;</div>
+    </div>
+  </div>
+</div>
+<div class="store-toast" id="shop-toast" hidden></div>
+
+{% if not search_query %}
+{% if active_store_services %}
+<div class="store-slider-section">
+  <h2 class="store-section-title">Our Services</h2>
+  <div class="store-promo-grid store-services-grid">
+    {% for svc in active_store_services %}
+    <div class="store-service-card">
+      <div class="store-service-icon">{{ svc['icon'] or '✅' }}</div>
+      <div class="store-service-title">{{ svc['title'] }}</div>
+      {% if svc['description'] %}<div class="store-service-desc">{{ svc['description'] }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if active_trust_items %}
+<div class="store-trust-strip store-trust-strip-admin">
+  {% for item in active_trust_items %}
+  <div class="store-trust-item">
+    <div class="store-trust-icon">{{ item['icon'] or '✅' }}</div>
+    <div><div class="store-trust-value">{{ item['title'] }}</div>{% if item['text'] %}<div class="store-trust-label">{{ item['text'] }}</div>{% endif %}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="store-trust-strip">
+  <div class="store-trust-item">
+    <div class="store-trust-icon">🕶️</div>
+    <div><div class="store-trust-value">{{ total_products }}+</div><div class="store-trust-label">Products Online</div></div>
+  </div>
+  <div class="store-trust-item">
+    <div class="store-trust-icon">🏬</div>
+    <div><div class="store-trust-value">Pickup</div><div class="store-trust-label">or Home Delivery</div></div>
+  </div>
+  <div class="store-trust-item">
+    <div class="store-trust-icon">💳</div>
+    <div><div class="store-trust-value">COD</div><div class="store-trust-label">& Online Payment</div></div>
+  </div>
+  <div class="store-trust-item">
+    <div class="store-trust-icon">📦</div>
+    <div><div class="store-trust-value">Track</div><div class="store-trust-label">Your Order Anytime</div></div>
+  </div>
+</div>
+
+{% if site_review_count %}
+<section class="store-home-reviews">
+  <h2 class="store-section-title">Customer Reviews</h2>
+  <div class="store-home-reviews-summary">
+    <span class="review-stars-display" aria-label="{{ site_avg_rating }} out of 5 stars">
+      {% set rounded = site_avg_rating|round(0, 'common')|int %}
+      {% for i in range(1,6) %}<span class="star{{ ' filled' if i <= rounded else '' }}">★</span>{% endfor %}
+    </span>
+    <strong>{{ site_avg_rating }}</strong> average from {{ site_review_count }} customer review{{ 's' if site_review_count != 1 else '' }}
+  </div>
+  {% if featured_reviews %}
+  <div class="store-featured-reviews-grid">
+    {% for item in featured_reviews %}
+    <div class="store-featured-review-card">
+      {% if item.customer_image %}<img src="{{ url_for('static', filename=item.customer_image) }}" alt="" class="store-featured-review-img" loading="lazy">{% endif %}
+      <span class="review-stars-display">{% for i in range(1,6) %}<span class="star{{ ' filled' if i <= item.review['rating'] else '' }}">★</span>{% endfor %}</span>
+      <div class="store-featured-review-title">{{ item.review['title'] }}</div>
+      <div class="store-featured-review-body">{{ item.review['body'][:140] }}{% if item.review['body']|length > 140 %}…{% endif %}</div>
+      <div class="store-featured-review-meta">
+        {{ item.review['display_name'] or 'Anonymous' }}
+        {% if item.review['is_verified_purchase'] %}<span class="store-verified-badge">&#10003; Verified</span>{% endif %}
+        {% if item.product_url %}&middot; <a href="{{ item.product_url }}">{{ item.product_label }}</a>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if google_rating_value %}
+<section class="store-google-rating">
+  <div class="store-google-rating-score">
+    <span class="review-stars-display">{% set gr = google_rating_value|float|round(0, 'common')|int %}{% for i in range(1,6) %}<span class="star{{ ' filled' if i <= gr else '' }}">★</span>{% endfor %}</span>
+    <strong>{{ google_rating_value }}</strong> Google Rating
+  </div>
+  {% if google_rating_count_label %}<div class="muted">{{ google_rating_count_label }}</div>{% endif %}
+  {% if google_review_url %}
+  <div class="store-google-rating-actions">
+    <a href="{{ google_review_url }}" target="_blank" rel="noopener" class="btn btn-secondary">Read reviews on Google</a>
+    <a href="{{ google_review_url }}" target="_blank" rel="noopener" class="btn btn-primary">Review us on Google</a>
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  // Makes the Gender-nav cards and category tabs filter in place instead of
+  // doing a full page navigation: intercept clicks on links inside
+  // #store-nav-region, fetch the target URL, and swap in just the
+  // #store-nav-region / #store-product-grid-region markup from the
+  // response (both ids exist in every store.home render, filtered or not).
+  // Falls back to a normal navigation if anything about the fetch/parse
+  // goes wrong, so this can never leave the visitor stuck on a stale page.
+  var NAV_ID = "store-nav-region";
+  var GRID_ID = "store-product-grid-region";
+  // Filter sidebar (sort/price/brand) - a THIRD swappable region, added
+  // alongside the original two above. It needs to re-render on every
+  // filter change too (checked boxes, current sort value, and the
+  // available-brands list itself can all change with cat/gender), so it
+  // participates in the exact same fetch-and-swap-in-place flow.
+  var SIDEBAR_ID = "store-filter-sidebar";
+
+  function regionEls() {
+    return [document.getElementById(NAV_ID), document.getElementById(GRID_ID), document.getElementById(SIDEBAR_ID)].filter(Boolean);
+  }
+
+  function setLoading(loading) {
+    regionEls().forEach(function (el) { el.classList.toggle("store-region-loading", loading); });
+  }
+
+  function swapIn(html, url, pushState) {
+    var newDoc = new DOMParser().parseFromString(html, "text/html");
+    var replacedAny = false;
+    [NAV_ID, GRID_ID, SIDEBAR_ID].forEach(function (id) {
+      var oldEl = document.getElementById(id);
+      var newEl = newDoc.getElementById(id);
+      if (oldEl && newEl) {
+        oldEl.replaceWith(newEl);
+        replacedAny = true;
+      }
+    });
+    if (!replacedAny) { window.location.href = url; return; }
+    if (pushState) history.pushState({ storeAjaxNav: true }, "", url);
+    if (newDoc.title) document.title = newDoc.title;
+  }
+
+  function loadUrl(url, pushState) {
+    setLoading(true);
+    fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+      .then(function (resp) {
+        if (!resp.ok) throw new Error("store nav fetch failed: " + resp.status);
+        return resp.text();
+      })
+      .then(function (html) {
+        swapIn(html, url, pushState);
+        setLoading(false);
+      })
+      .catch(function () {
+        // Network hiccup or unexpected response shape - don't leave the
+        // visitor on a half-updated page, just do the real navigation.
+        window.location.href = url;
+      });
+  }
+
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest("a");
+    if (!a) return;
+    var navRegion = document.getElementById(NAV_ID);
+    var sidebarRegion = document.getElementById(SIDEBAR_ID);
+    var inNav = navRegion && navRegion.contains(a);
+    var inSidebar = sidebarRegion && sidebarRegion.contains(a);
+    if (!inNav && !inSidebar) return;
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return; // let open-in-new-tab etc. work normally
+    e.preventDefault();
+    loadUrl(a.href, true);
+  });
+
+  window.addEventListener("popstate", function () {
+    loadUrl(window.location.href, false);
+  });
+
+  // ---- Filter sidebar wiring (sort / price range / brand checkboxes) ----
+  // Reads the CURRENT page URL's query params, overlays whatever the
+  // sidebar's own controls say right now, and re-fetches via the same
+  // loadUrl() used above - so a filter change feels identical to clicking
+  // a gender card (no reload, URL still updates via pushState/back button).
+  function applyFilters() {
+    var sidebar = document.getElementById(SIDEBAR_ID);
+    if (!sidebar) return;
+    var params = new URLSearchParams(window.location.search);
+
+    var sortEl = sidebar.querySelector('[name="sort"]');
+    if (sortEl && sortEl.value) { params.set("sort", sortEl.value); } else { params.delete("sort"); }
+
+    var minEl = sidebar.querySelector('[name="price_min"]');
+    var maxEl = sidebar.querySelector('[name="price_max"]');
+    if (minEl && minEl.value.trim()) { params.set("price_min", minEl.value.trim()); } else { params.delete("price_min"); }
+    if (maxEl && maxEl.value.trim()) { params.set("price_max", maxEl.value.trim()); } else { params.delete("price_max"); }
+
+    params.delete("brand");
+    sidebar.querySelectorAll('input[name="brand"]:checked').forEach(function (cb) { params.append("brand", cb.value); });
+
+    var qs = params.toString();
+    var url = window.location.pathname + (qs ? "?" + qs : "");
+    loadUrl(url, true);
+  }
+
+  document.addEventListener("change", function (e) {
+    var sidebar = document.getElementById(SIDEBAR_ID);
+    if (!sidebar || !sidebar.contains(e.target)) return;
+    if (e.target.matches('[name="sort"]') || e.target.matches('input[name="brand"]')) {
+      applyFilters();
+    }
+  });
+
+  document.addEventListener("click", function (e) {
+    var applyBtn = e.target.closest("#shop-filter-price-apply");
+    if (!applyBtn) return;
+    e.preventDefault();
+    applyFilters();
+  });
+
+  // Mobile "Filters & Sort" collapse toggle - delegated on document so it
+  // survives the sidebar being replaced wholesale by every AJAX filter
+  // swap above (same reasoning as the thumbnail-click delegation below).
+  document.addEventListener("click", function (e) {
+    var toggleBtn = e.target.closest("#storeFilterToggleBtn");
+    if (!toggleBtn) return;
+    var panel = document.getElementById("storeFilterPanel");
+    if (!panel) return;
+    var isOpen = panel.classList.toggle("open");
+    toggleBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+  });
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  // Shop-grid Quick View modal + AJAX Add to Cart (task #129). Every
+  // listener below is delegated on document (not bound to specific buttons
+  // at load time) because #store-product-grid-region gets wholesale
+  // replaced by the AJAX filter/sort/category swap above - buttons queried
+  // only once at page load would go stale after the very first filter
+  // change, exactly like the thumbnail-click delegation further below.
+  var CART_ADD_URL = "{{ url_for('store.cart_add') }}";
+  var QUICKVIEW_URL_TEMPLATE = "{{ url_for('store.product_quick_view', item_type='ITEMTYPE', item_id=999999) }}";
+  var WISHLIST_TOGGLE_URL = "{{ url_for('store.wishlist_toggle') }}";
+  var WISHLIST_LOGIN_URL = "{{ url_for('store.login') }}";
+
+  var toastEl = document.getElementById("shop-toast");
+  var toastTimer = null;
+  function showToast(message, isError) {
+    if (!toastEl) return;
+    toastEl.textContent = message;
+    toastEl.hidden = false;
+    toastEl.className = "store-toast is-visible" + (isError ? " is-error" : "");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.classList.remove("is-visible"); }, 2600);
+  }
+
+  function updateCartBadge(count) {
+    var cartLink = document.querySelector(".store-cart-link");
+    if (!cartLink) return;
+    var badge = cartLink.querySelector(".store-cart-badge");
+    if (count > 0) {
+      if (!badge) {
+        badge = document.createElement("span");
+        badge.className = "store-cart-badge";
+        cartLink.appendChild(badge);
+      }
+      badge.textContent = count;
+    } else if (badge) {
+      badge.remove();
+    }
+  }
+
+  function addToCart(itemType, itemId, btn) {
+    if (btn) btn.disabled = true;
+    var body = "item_type=" + encodeURIComponent(itemType) + "&item_id=" + encodeURIComponent(itemId) + "&qty=1";
+    fetch(CART_ADD_URL, {
+      method: "POST",
+      headers: { "X-Requested-With": "XMLHttpRequest", "Content-Type": "application/x-www-form-urlencoded" },
+      body: body,
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.ok) {
+          showToast(data.message || "Product added to cart.");
+          updateCartBadge(data.cart_count);
+        } else {
+          showToast(data.error || "Could not add to cart.", true);
+        }
+      })
+      .catch(function () { showToast("Could not add to cart. Please try again.", true); })
+      .finally(function () { if (btn) btn.disabled = false; });
+  }
+
+  function updateWishlistBadge(count) {
+    var link = document.querySelector(".store-wishlist-link");
+    if (!link) return;
+    var badge = link.querySelector(".store-cart-badge");
+    if (count > 0) {
+      if (!badge) {
+        badge = document.createElement("span");
+        badge.className = "store-cart-badge";
+        link.appendChild(badge);
+      }
+      badge.textContent = count;
+    } else if (badge) {
+      badge.remove();
+    }
+  }
+
+  // Wishlist toggle - delegated (see comment at top of this IIFE) so it
+  // keeps working after every AJAX grid/filter swap. A logged-out click
+  // sends the customer to login (with ?next= back to this page) instead of
+  // failing silently, since wishlist has no guest concept (unlike cart).
+  function toggleWishlist(itemType, itemId, btn) {
+    if (btn) btn.disabled = true;
+    var body = "item_type=" + encodeURIComponent(itemType) + "&item_id=" + encodeURIComponent(itemId);
+    fetch(WISHLIST_TOGGLE_URL, {
+      method: "POST",
+      headers: { "X-Requested-With": "XMLHttpRequest", "Content-Type": "application/x-www-form-urlencoded" },
+      body: body,
+    })
+      .then(function (r) {
+        if (r.status === 401) {
+          window.location.href = WISHLIST_LOGIN_URL + "?next=" + encodeURIComponent(window.location.pathname + window.location.search);
+          return null;
+        }
+        return r.json();
+      })
+      .then(function (data) {
+        if (!data) return;
+        if (data.ok) {
+          if (btn) {
+            btn.classList.toggle("active", data.saved);
+            btn.textContent = data.saved ? "♥" : "♡";
+            btn.setAttribute("aria-label", data.saved ? "Remove from wishlist" : "Save to wishlist");
+          }
+          showToast(data.message || "Wishlist updated.");
+          updateWishlistBadge(data.wishlist_count);
+        } else {
+          showToast(data.error || "Could not update wishlist.", true);
+        }
+      })
+      .catch(function () { showToast("Could not update wishlist. Please try again.", true); })
+      .finally(function () { if (btn) btn.disabled = false; });
+  }
+
+  document.addEventListener("click", function (e) {
+    var wBtn = e.target.closest(".store-card-wishlist-btn");
+    if (!wBtn) return;
+    toggleWishlist(wBtn.dataset.itemType, wBtn.dataset.itemId, wBtn);
+  });
+
+  // The modal's own in-modal "Add to Cart" button (rendered fresh into
+  // #shop-quickview-body on every open) - delegated the same way, since it
+  // doesn't exist in the DOM until a Quick View is actually opened.
+  document.addEventListener("click", function (e) {
+    var qvAddBtn = e.target.closest("#shop-quickview-body .store-shop-quickview-add-btn");
+    if (!qvAddBtn) return;
+    addToCart(qvAddBtn.dataset.itemType, qvAddBtn.dataset.itemId, qvAddBtn);
+  });
+
+  // ---- Quick View modal ----
+  var backdrop = document.getElementById("shop-quickview-backdrop");
+  var qvBody = document.getElementById("shop-quickview-body");
+  var qvClose = document.getElementById("shop-quickview-close");
+
+  function closeQuickView() { if (backdrop) backdrop.hidden = true; }
+  if (qvClose) qvClose.addEventListener("click", closeQuickView);
+  if (backdrop) {
+    backdrop.addEventListener("click", function (e) { if (e.target === backdrop) closeQuickView(); });
+  }
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && backdrop && !backdrop.hidden) closeQuickView();
+  });
+
+  function escapeHtml(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function renderQuickView(data) {
+    var thumbs = (data.images || []).map(function (src, i) {
+      return '<img src="' + src + '" class="store-quickview-thumb' + (i === 0 ? " active" : "") + '" data-src="' + src + '" alt="">';
+    }).join("");
+    var mainImg = data.images && data.images[0] ? data.images[0] : "";
+    var html = '<div class="store-quickview-gallery">';
+    if (mainImg) {
+      html += '<img id="shop-quickview-main-img" class="store-quickview-main-img" src="' + mainImg + '" alt="">';
+    } else {
+      html += '<div class="store-card-noimg store-card-noimg-big">📷</div>';
+    }
+    if (data.images && data.images.length > 1) {
+      html += '<div class="store-quickview-thumbs">' + thumbs + '</div>';
+    }
+    html += '</div><div class="store-quickview-info">';
+    html += '<h3>' + escapeHtml(data.brand) + (data.frame_id ? " " + escapeHtml(data.frame_id) : "") + '</h3>';
+    if (data.frame_id) html += '<div class="store-detail-row"><span class="store-detail-label">Frame ID:</span> ' + escapeHtml(data.frame_id) + '</div>';
+    if (data.color) html += '<div class="store-detail-row"><span class="store-detail-label">Color:</span> ' + escapeHtml(data.color) + '</div>';
+    if (data.size) html += '<div class="store-detail-row"><span class="store-detail-label">Size:</span> ' + escapeHtml(data.size) + '</div>';
+    html += '<div class="store-detail-row store-detail-row-emphasis"><span class="store-detail-label">Price:</span> ' + escapeHtml(data.currency) + ' ' + Math.round(data.price) + '</div>';
+    if (data.description) html += '<div class="store-detail-row store-detail-description">' + escapeHtml(data.description) + '</div>';
+    html += '<div class="store-detail-row store-product-stock"><span class="store-detail-label">Stock:</span> ' + escapeHtml(data.stock_label) + '</div>';
+    html += '<div class="store-quickview-actions">';
+    if (data.stock_qty > 0) {
+      html += '<button type="button" class="btn btn-primary store-shop-quickview-add-btn" data-item-type="' + data.item_type + '" data-item-id="' + data.item_id + '">Add to Cart</button>';
+    }
+    html += '<a href="' + data.detail_url + '" class="btn btn-secondary">View Full Details</a>';
+    html += '</div></div>';
+    qvBody.innerHTML = html;
+
+    qvBody.querySelectorAll(".store-quickview-thumb").forEach(function (t) {
+      t.addEventListener("click", function () {
+        var mainEl = document.getElementById("shop-quickview-main-img");
+        if (mainEl) mainEl.src = t.dataset.src;
+        qvBody.querySelectorAll(".store-quickview-thumb").forEach(function (x) { x.classList.remove("active"); });
+        t.classList.add("active");
+      });
+    });
+  }
+
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest(".store-card-quickview-btn");
+    if (!btn) return;
+    var itemType = btn.dataset.itemType;
+    var itemId = btn.dataset.itemId;
+    if (!backdrop || !qvBody) return;
+    backdrop.hidden = false;
+    qvBody.innerHTML = '<div class="store-quickview-loading">Loading&hellip;</div>';
+    var url = QUICKVIEW_URL_TEMPLATE.replace("ITEMTYPE", itemType).replace("999999", itemId);
+    fetch(url)
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!data.ok) {
+          qvBody.innerHTML = "<p>" + escapeHtml(data.error || "Could not load product.") + "</p>";
+          return;
+        }
+        renderQuickView(data);
+      })
+      .catch(function () {
+        qvBody.innerHTML = "<p>Could not load product. Please try again.</p>";
+      });
+  });
+})();
+</script>
+<script>
+(function () {
+  // Product Card Gallery: clicking a thumbnail swaps that card's main image
+  // (toggles .active between the stacked .store-card-gallery-img elements)
+  // and highlights the clicked thumbnail. Delegated on document so it keeps
+  // working after the AJAX gender/category swap above replaces
+  // #store-product-grid-region with freshly-rendered markup - no re-binding
+  // needed, since we always look the target up fresh from the click event.
+  document.addEventListener("click", function (e) {
+    var thumb = e.target.closest(".store-card-thumb");
+    if (!thumb) return;
+    e.preventDefault();
+    var card = thumb.closest(".store-card");
+    if (!card) return;
+    var index = thumb.getAttribute("data-index");
+    card.querySelectorAll(".store-card-gallery-img").forEach(function (img) {
+      img.classList.toggle("active", img.getAttribute("data-index") === index);
+    });
+    card.querySelectorAll(".store-card-thumb").forEach(function (t) {
+      t.classList.toggle("active", t === thumb);
+    });
+  });
+})();
+</script>
+{% if banners and banners|length > 1 %}
+<script>
+(function () {
+  // Self-contained banner carousel - deliberately not dependent on any
+  // external CDN library, so it always works even if a third-party script
+  // host is blocked/unreachable on the visitor's network.
+  var slider = document.getElementById("homepage-banner-slider");
+  var track = document.getElementById("homepage-banner-track");
+  if (!slider || !track) return;
+  var realSlides = Array.from(track.children);
+  var count = realSlides.length;
+  if (count < 2) return;
+
+  // Clone first/last slide for a seamless infinite loop.
+  var firstClone = realSlides[0].cloneNode(true);
+  var lastClone = realSlides[count - 1].cloneNode(true);
+  track.appendChild(firstClone);
+  track.insertBefore(lastClone, realSlides[0]);
+
+  var index = 1; // position 1..count are the real slides; 0 and count+1 are clones
+  var total = count + 2;
+  // Guards against a burst of queued autoplay ticks (e.g. a backgrounded
+  // browser tab "catching up" on missed setInterval callbacks and firing
+  // several next() calls back-to-back before any transition finishes) from
+  // driving `index` far outside the valid 0..total-1 range, which used to
+  // leave the slider permanently blank (transform pushed way past any slide).
+  var isAnimating = false;
+
+  function setPosition(withTransition) {
+    track.style.transition = withTransition ? "transform 0.5s ease" : "none";
+    track.style.transform = "translateX(-" + (index * 100) + "%)";
+  }
+  setPosition(false);
+
+  var dots = Array.from(document.querySelectorAll("#homepage-banner-dots .store-banner-dot"));
+  function updateDots() {
+    var real = ((index - 1) % count + count) % count;
+    dots.forEach(function (d, i) { d.classList.toggle("active", i === real); });
+  }
+
+  function goTo(newIndex) {
+    if (isAnimating) return; // ignore extra calls until the current slide settles
+    isAnimating = true;
+    index = newIndex;
+    setPosition(true);
+    updateDots();
+  }
+  function next() { goTo(index + 1); }
+  function prev() { goTo(index - 1); }
+
+  track.addEventListener("transitionend", function (e) {
+    if (e.target !== track || (e.propertyName && e.propertyName !== "transform")) return;
+    isAnimating = false;
+    if (index <= 0) { index = count; setPosition(false); }
+    else if (index >= total - 1) { index = 1; setPosition(false); }
+  });
+
+  var autoplayTimer = null;
+  function startAutoplay() { stopAutoplay(); autoplayTimer = setInterval(next, 4500); }
+  function stopAutoplay() { if (autoplayTimer) clearInterval(autoplayTimer); }
+
+  // Extra safety net: pause the timer while the tab is hidden and, on
+  // return, snap back onto a valid real slide before resuming - so even if
+  // some other edge case ever nudges `index` out of range, the visitor never
+  // sees a blank slider.
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) {
+      stopAutoplay();
+    } else {
+      isAnimating = false;
+      if (index < 1 || index > count) {
+        index = ((index - 1) % count + count) % count + 1;
+        setPosition(false);
+      }
+      updateDots();
+      startAutoplay();
+    }
+  });
+
+  var prevBtn = slider.querySelector(".store-banner-prev");
+  var nextBtn = slider.querySelector(".store-banner-next");
+  if (prevBtn) prevBtn.addEventListener("click", function () { prev(); startAutoplay(); });
+  if (nextBtn) nextBtn.addEventListener("click", function () { next(); startAutoplay(); });
+  dots.forEach(function (d) {
+    d.addEventListener("click", function () {
+      goTo(parseInt(d.dataset.index, 10) + 1);
+      startAutoplay();
+    });
+  });
+
+  slider.addEventListener("mouseenter", stopAutoplay);
+  slider.addEventListener("mouseleave", startAutoplay);
+
+  var touchStartX = null;
+  slider.addEventListener("touchstart", function (e) {
+    touchStartX = e.touches[0].clientX;
+    stopAutoplay();
+  }, { passive: true });
+  slider.addEventListener("touchend", function (e) {
+    if (touchStartX === null) return;
+    var dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 40) { if (dx < 0) next(); else prev(); }
+    touchStartX = null;
+    startAutoplay();
+  });
+
+  updateDots();
+  startAutoplay();
+})();
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}{{ supplier['name'] }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>{{ supplier['name'] }}</h1>
+  <div class="page-actions">
+    {% for key, label in purchase_types %}
+    <a href="{{ url_for('suppliers.po_new', supplier_id=supplier['id'], purchase_type=key) }}" class="btn btn-primary">+ {{ label }} PO</a>
+    {% endfor %}
+    <a href="{{ url_for('suppliers.edit', supplier_id=supplier['id']) }}" class="btn btn-secondary">Edit</a>
+    <form method="POST" action="{{ url_for('suppliers.delete', supplier_id=supplier['id']) }}" style="display:inline" onsubmit="return confirm('Delete this supplier?');" data-ajax-save>
+      <button type="submit" class="btn btn-danger">Delete</button>
+    </form>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Contact Info</h2>
+  <p><strong>Phone:</strong> {{ supplier['phone'] or '-' }}</p>
+  <p><strong>Email:</strong> {{ supplier['email'] or '-' }}</p>
+  <p><strong>Address:</strong> {{ supplier['address'] or '-' }}</p>
+  <p><strong>Notes:</strong> {{ supplier['notes'] or '-' }}</p>
+</div>
+
+<div class="panel">
+  <h2>Outstanding Balance</h2>
+  <p class="muted" style="margin-top:0;">The total balance currently due to this supplier across all purchase orders (excluding cancelled ones).</p>
+  <div class="stat-grid" style="grid-template-columns: repeat(1, minmax(180px, 260px));">
+    <div class="stat-card {{ 'warn' if outstanding and outstanding > 0 else 'good' }}">
+      <div class="stat-label">Outstanding to Pay</div>
+      <div class="stat-value">Rs. {{ "%.2f"|format(outstanding or 0) }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Purchase Order History</h2>
+  {% if purchase_orders %}
+  <table class="table">
+    <thead><tr><th>PO#</th><th>Type</th><th>Status</th><th>Payment</th><th>Order Date</th><th>Received Date</th></tr></thead>
+    <tbody>
+    {% for po in purchase_orders %}
+      <tr class="clickable-row" onclick="window.location='{{ url_for('suppliers.po_detail', po_id=po['id']) }}'">
+        <td>{{ po['po_number'] }}</td>
+        <td>{{ po['purchase_type']|replace('_',' ')|title }}</td>
+        <td><span class="badge status-{{ po['status']|replace(' ', '-')|lower }}">{{ po['status'] }}</span></td>
+        <td><span class="badge status-{{ po['payment_status']|lower }}">{{ po['payment_status'] }}</span></td>
+        <td>{{ po['order_date'][:10] }}</td>
+        <td>{{ po['received_date'][:10] if po['received_date'] else '-' }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No purchase orders yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

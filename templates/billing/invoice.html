@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Invoice {{ invoice['invoice_no'] }}{% endblock %}
+{% block content %}
+<div class="page-header no-print">
+  <h1>Invoice {{ invoice['invoice_no'] }}</h1>
+  <div class="page-actions">
+    <button onclick="window.print()" class="btn btn-secondary">🖨️ Print</button>
+    <a href="{{ url_for('billing.invoice_pdf', invoice_id=invoice['id']) }}" class="btn btn-primary">⬇ Download PDF</a>
+  </div>
+</div>
+
+<div class="panel invoice-sheet">
+  <div class="invoice-header">
+    <div>
+      <h2>{{ shop['name'] }}</h2>
+      <p>{{ shop['address'] }}</p>
+      <p>Phone: {{ shop['phone'] }}</p>
+    </div>
+    <div class="invoice-meta">
+      <p><strong>Invoice #:</strong> {{ invoice['invoice_no'] }}</p>
+      <p><strong>Order #:</strong> {{ invoice['order_no'] }}</p>
+      <p><strong>Date:</strong> {{ invoice['created_at'][:10] }}</p>
+    </div>
+  </div>
+
+  <div class="invoice-bill-to">
+    <h3>Bill To</h3>
+    <p>{{ invoice['customer_name'] }}</p>
+    <p>{{ invoice['customer_phone'] or '' }}</p>
+    <p>{{ invoice['customer_address'] or '' }}</p>
+  </div>
+
+  {% if prescription %}
+  <div class="invoice-prescription">
+    <h3>Prescription{% if prescription['rx_number'] %} - Rx No. {{ prescription['rx_number'] }}{% endif %}</h3>
+    <table>
+      <thead><tr><th></th><th>SPH</th><th>CYL</th><th>AXIS</th></tr></thead>
+      <tbody>
+        <tr><td><strong>OD (Right)</strong></td><td>{{ prescription['od_sph'] or '-' }}</td><td>{{ prescription['od_cyl'] or '-' }}</td><td>{{ prescription['od_axis'] or '-' }}</td></tr>
+        <tr><td><strong>OS (Left)</strong></td><td>{{ prescription['os_sph'] or '-' }}</td><td>{{ prescription['os_cyl'] or '-' }}</td><td>{{ prescription['os_axis'] or '-' }}</td></tr>
+      </tbody>
+    </table>
+    <p class="rx-extra">ADD: {{ prescription['add_power'] or '-' }} &nbsp; | &nbsp; PD: {{ prescription['pd'] or '-' }}
+      {% if prescription['prescribed_by'] or prescription['prescribed_date'] %}
+      &nbsp; | &nbsp; Prescribed by: {{ prescription['prescribed_by'] or '-' }} ({{ prescription['prescribed_date'] or '-' }})
+      {% endif %}
+    </p>
+  </div>
+  {% endif %}
+
+  <table class="table invoice-items">
+    <thead><tr><th>Description</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead>
+    <tbody>
+    {% for it in items %}
+      <tr>
+        <td>{{ it['description'] }}</td>
+        <td>{{ it['qty'] }}</td>
+        <td>{{ shop['currency'] }} {{ "%.2f"|format(it['unit_price']) }}</td>
+        <td>{{ shop['currency'] }} {{ "%.2f"|format(it['total_price']) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="invoice-totals">
+    <div><span>Subtotal</span><span>{{ shop['currency'] }} {{ "%.2f"|format(invoice['subtotal']) }}</span></div>
+    <div><span>Discount</span><span>{{ shop['currency'] }} {{ "%.2f"|format(invoice['discount']) }}</span></div>
+    <div><span>GST ({{ invoice['gst_percent'] }}%)</span><span>{{ shop['currency'] }} {{ "%.2f"|format(invoice['gst_amount']) }}</span></div>
+    <div class="grand"><span>Total</span><span>{{ shop['currency'] }} {{ "%.2f"|format(invoice['total']) }}</span></div>
+    <div><span>Amount Paid</span><span>{{ shop['currency'] }} {{ "%.2f"|format(invoice['amount_paid']) }}</span></div>
+    <div><span>Balance Due</span><span>{{ shop['currency'] }} {{ "%.2f"|format(invoice['total'] - invoice['amount_paid']) }}</span></div>
+    <div class="status-line"><span>Payment Status</span><span class="badge status-{{ invoice['payment_status']|lower }}">{{ invoice['payment_status'] }}</span></div>
+  </div>
+  <p class="invoice-footer">Thank you for shopping with us!</p>
+</div>
+
+<div class="panel form-panel no-print">
+  <h2>Update Payment</h2>
+  <form method="POST" action="{{ url_for('billing.update_payment', invoice_id=invoice['id']) }}">
+    <div class="form-row">
+      <div>
+        <label>Amount Paid (Rs.)</label>
+        <input type="number" step="0.01" name="amount_paid" value="{{ invoice['amount_paid'] }}">
+      </div>
+      <div>
+        <label>Payment Mode</label>
+        <select name="payment_mode">
+          <option value="">-- Select --</option>
+          <option value="Cash" {{ 'selected' if invoice['payment_mode']=='Cash' else '' }}>Cash</option>
+          <option value="Card" {{ 'selected' if invoice['payment_mode']=='Card' else '' }}>Card</option>
+          <option value="UPI" {{ 'selected' if invoice['payment_mode']=='UPI' else '' }}>UPI</option>
+          <option value="Bank Transfer" {{ 'selected' if invoice['payment_mode']=='Bank Transfer' else '' }}>Bank Transfer</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Update Payment</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

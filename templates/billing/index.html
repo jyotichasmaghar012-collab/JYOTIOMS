@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% from "_pagination.html" import render_pagination %}
+{% block title %}Invoices{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Billing / Invoices</h1>
+</div>
+
+<form method="GET" class="search-bar">
+  <input type="text" name="q" placeholder="Search by invoice#, order#, customer name or phone..." value="{{ q }}">
+  <select name="status">
+    <option value="">All Payment Status</option>
+    <option value="Paid" {{ 'selected' if status=='Paid' else '' }}>Paid</option>
+    <option value="Partial" {{ 'selected' if status=='Partial' else '' }}>Partial</option>
+    <option value="Due" {{ 'selected' if status=='Due' else '' }}>Due</option>
+  </select>
+  <label class="date-filter-label">From <input type="date" name="date_from" value="{{ date_from }}"></label>
+  <label class="date-filter-label">To <input type="date" name="date_to" value="{{ date_to }}"></label>
+  <button type="submit" class="btn btn-secondary">Filter</button>
+  {# Same form fields, submitted to the PDF-report route instead of the
+     list route - so the downloaded report always matches whatever
+     search/status/date filters are currently set (applied or not yet
+     applied), no page reload needed first. #}
+  <button type="submit" formaction="{{ url_for('billing.invoices_report_pdf') }}" class="btn btn-secondary btn-pdf-export" title="Download the filtered invoice list as a PDF report">⬇ PDF</button>
+  {% if q or status or date_from or date_to %}
+  <a href="{{ url_for('billing.index') }}" class="btn btn-small">Clear</a>
+  {% endif %}
+</form>
+
+<div class="panel">
+{% if invoices %}
+<table class="table">
+  <thead><tr><th>Invoice#</th><th>Order#</th><th>Customer</th>{% if all_branches_view %}<th>Branch</th>{% endif %}<th>Total</th><th>Paid</th><th>Status</th><th>Due Since</th><th>Date</th></tr></thead>
+  <tbody>
+  {% for i in invoices %}
+    <tr class="clickable-row" onclick="window.location='{{ url_for('billing.view_invoice', invoice_id=i['id']) }}'">
+      <td>{{ i['invoice_no'] }}</td>
+      <td>{{ i['order_no'] }}</td>
+      <td>{{ i['customer_name'] }}</td>
+      {% if all_branches_view %}<td>{{ get_branch_name(i['branch_id']) or '-' }}</td>{% endif %}
+      <td>Rs. {{ "%.2f"|format(i['total']) }}</td>
+      <td>Rs. {{ "%.2f"|format(i['amount_paid']) }}</td>
+      <td><span class="badge status-{{ i['payment_status']|lower }}">{{ i['payment_status'] }}</span></td>
+      <td>
+        {% if i['payment_status'] != 'Paid' %}
+          {% if i['days_since'] <= 0 %}
+          <span class="due-since due-today">Today</span>
+          {% else %}
+          <span class="due-since {{ 'due-old' if i['days_since'] > 7 else '' }}">{{ i['days_since'] }} days overdue</span>
+          {% endif %}
+        {% else %}
+          -
+        {% endif %}
+      </td>
+      <td>{{ i['created_at'][:10] }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{{ render_pagination(page, total_pages, total, page_url) }}
+{% else %}
+<p class="empty">No invoices found.</p>
+{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit Promotion' if promo else 'Add Promotion' }}{% endblock %}
+{% block content %}
+{% macro val(name, default='') %}{{ (form.get(name, default) if form else (promo[name] if promo and promo[name] is not none else default)) }}{% endmacro %}
+<div class="page-header">
+  <h1>{{ 'Edit Promotion' if promo else 'Add Promotion' }}</h1>
+  <div class="page-actions">
+    <a href="{{ url_for('promotions.index') }}" class="btn btn-small btn-secondary">Back to Promotions</a>
+  </div>
+</div>
+
+<div class="panel form-panel">
+<form method="POST" enctype="multipart/form-data" data-ajax-save>
+  <label>Title * <span class="muted" style="font-weight:400;">(admin-facing label only, not shown to customers)</span></label>
+  <input type="text" name="title" required value="{{ val('title') }}">
+
+  <label>Image {{ '*' if not promo else '' }}</label>
+  {% if promo and promo['image_path'] %}
+  <div class="product-photo-preview"><img src="{{ url_for('static', filename=promo['image_path']) }}" alt=""></div>
+  {% endif %}
+  <input type="file" name="image" accept="image/png,image/jpeg,image/webp" {{ 'required' if not promo else '' }}>
+  <p class="field-hint">JPG, PNG or WEBP. Larger uploads are automatically resized.</p>
+
+  <label>Description (optional)</label>
+  <textarea name="description" rows="2">{{ val('description') }}</textarea>
+
+  <div class="form-row">
+    <div>
+      <label>Button Text</label>
+      <input type="text" name="button_text" value="{{ val('button_text') }}" placeholder="e.g. Shop Now">
+    </div>
+    <div>
+      <label>Button URL</label>
+      <input type="text" name="button_url" value="{{ val('button_url') }}" placeholder="e.g. /store/#store-catalog">
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div>
+      <label>Display Order</label>
+      <input type="number" name="display_order" value="{{ val('display_order', 0) if promo else 0 }}">
+      <p class="field-hint">Lower numbers show first.</p>
+    </div>
+    <div>
+      <label class="checkbox-label" style="margin-top: 1.8em;">
+        <input type="checkbox" name="is_active" value="1" {{ 'checked' if (form.get('is_active') if form else (promo is none or promo['is_active'])) else '' }}>
+        Active (visible on the homepage)
+      </label>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a href="{{ url_for('promotions.index') }}" class="btn btn-secondary">Cancel</a>
+  </div>
+</form>
+</div>
+{% endblock %}

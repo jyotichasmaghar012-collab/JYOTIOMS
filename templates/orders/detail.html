@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+{% block title %}Order {{ order['order_no'] }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Order {{ order['order_no'] }} {% if order['source'] == 'online' %}<span class="badge status-online">🌐 Online</span>{% else %}<span class="badge status-in-store">In-Store</span>{% endif %}</h1>
+  <div class="page-actions">
+    {% if invoice %}
+      <a href="{{ url_for('billing.view_invoice', invoice_id=invoice['id']) }}" class="btn btn-primary">View Invoice</a>
+    {% elif order['status'] != 'Cancelled' %}
+      <a href="{{ url_for('billing.create_invoice', order_id=order['id']) }}" class="btn btn-primary">Generate Invoice</a>
+    {% endif %}
+  </div>
+</div>
+
+{% if order['source'] == 'online' %}
+<div class="panel">
+  <h2>Online Order Details</h2>
+  <p><strong>Fulfillment:</strong> {{ 'Home Delivery' if order['delivery_type'] == 'delivery' else 'Store Pickup' }}</p>
+  {% if order['delivery_type'] == 'delivery' %}<p><strong>Delivery Address:</strong> {{ order['delivery_address'] }}</p>{% endif %}
+  <p><strong>Payment:</strong>
+    {% if order['payment_method'] == 'cod' %}Cash on Pickup/Delivery
+    {% else %}Online Payment - <span class="badge status-{{ order['online_payment_status'] or 'pending' }}">{{ (order['online_payment_status'] or 'pending')|title }}</span>
+    {% endif %}
+  </p>
+</div>
+{% endif %}
+
+<div class="grid-2">
+  <div class="panel">
+    <h2>Customer</h2>
+    <p><strong>{{ order['customer_name'] }}</strong></p>
+    <p>{{ order['customer_phone'] or '-' }}</p>
+    <p>{{ order['customer_address'] or '-' }}</p>
+    <a href="{{ url_for('customers.detail', customer_id=order['customer_id']) }}">View customer profile &rarr;</a>
+  </div>
+
+  <div class="panel">
+    <h2>Status</h2>
+    <p><span class="badge status-{{ order['status']|replace(' ', '-')|lower }} large">{{ order['status'] }}</span></p>
+    <form method="POST" action="{{ url_for('orders.update_status', order_id=order['id']) }}" class="inline-form" data-ajax-save>
+      <select name="status">
+        {% for s in statuses %}
+        <option value="{{ s }}" {{ 'selected' if s == order['status'] else '' }}>{{ s }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-small btn-primary">Update</button>
+    </form>
+    <p class="muted">Order Date: {{ order['order_date'][:10] }}</p>
+    <p class="muted">Expected Delivery: {{ order['expected_delivery_date'] or '-' }}</p>
+    {% if order['delivered_date'] %}<p class="muted">Delivered: {{ order['delivered_date'][:10] }}</p>{% endif %}
+    {% if order['notes'] %}<p class="muted">Notes: {{ order['notes'] }}</p>{% endif %}
+    <form method="POST" action="{{ url_for('orders.notify_customer', order_id=order['id']) }}" class="inline-form" data-ajax-save>
+      <button type="submit" class="btn btn-small btn-secondary" data-saving-label="Sending...">📩 Send SMS Update to Customer</button>
+    </form>
+  </div>
+</div>
+
+{% if prescription %}
+<div class="panel">
+  <h2>Prescription Used</h2>
+  <table class="table small">
+    <thead><tr><th></th><th>SPH</th><th>CYL</th><th>AXIS</th></tr></thead>
+    <tbody>
+      <tr><td>Right Eye (OD)</td><td>{{ prescription['od_sph'] }}</td><td>{{ prescription['od_cyl'] }}</td><td>{{ prescription['od_axis'] }}</td></tr>
+      <tr><td>Left Eye (OS)</td><td>{{ prescription['os_sph'] }}</td><td>{{ prescription['os_cyl'] }}</td><td>{{ prescription['os_axis'] }}</td></tr>
+    </tbody>
+  </table>
+  <p class="muted">ADD: {{ prescription['add_power'] or '-' }} | PD: {{ prescription['pd'] or '-' }}</p>
+</div>
+{% endif %}
+
+<div class="panel">
+  <h2>Order Items</h2>
+  <table class="table">
+    <thead><tr><th>Description</th><th>Type</th><th>Qty</th><th>Unit Price</th><th>Total</th><th>Sourcing</th><th></th></tr></thead>
+    <tbody>
+    {% for it in items %}
+      {% set remaining = it['qty'] - returned_qty_by_item.get(it['id'], 0) %}
+      {% set po = po_by_order_item.get(it['id']) %}
+      <tr>
+        <td>{{ it['description'] }}</td>
+        <td>{{ it['item_type']|replace('_',' ')|title }}</td>
+        <td>{{ it['qty'] }}</td>
+        <td>Rs. {{ "%.2f"|format(it['unit_price']) }}</td>
+        <td>Rs. {{ "%.2f"|format(it['total_price']) }}</td>
+        <td>
+          {% if po %}
+            {% if po['status'] == 'Pending' %}
+            <a href="{{ url_for('suppliers.po_detail', po_id=po['id']) }}" class="badge status-due" title="Needs a supplier picked">Purchase Order Pending</a>
+            {% elif po['status'] == 'Cancelled' %}
+            <span class="badge">Request cancelled</span>
+            {% else %}
+            <a href="{{ url_for('suppliers.po_detail', po_id=po['id']) }}" class="badge status-paid">{{ po['status'] }} via PO</a>
+            {% endif %}
+          {% endif %}
+        </td>
+        <td>
+          {% if order['status'] != 'Cancelled' and remaining > 0 %}
+          <button type="button" class="btn btn-small" onclick="document.getElementById('return-form-{{ it['id'] }}').classList.toggle('hidden')">Return/Exchange</button>
+          {% elif remaining <= 0 %}
+          <span class="muted">Fully returned</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% if remaining > 0 %}
+      <tr id="return-form-{{ it['id'] }}" class="hidden">
+        <td colspan="7">
+          <form method="POST" action="{{ url_for('returns.create_return', order_id=order['id'], item_id=it['id']) }}" class="return-exchange-form" data-ajax-save>
+            <div class="form-row">
+              <div>
+                <label>Type</label>
+                <select name="return_type" class="ret-type-select" data-item="{{ it['id'] }}">
+                  <option value="Return">Return only</option>
+                  <option value="Exchange">Exchange for another item</option>
+                </select>
+              </div>
+              <div>
+                <label>Quantity (max {{ remaining }})</label>
+                <input type="number" name="qty" value="{{ remaining }}" min="1" max="{{ remaining }}">
+              </div>
+            </div>
+            <label>Reason</label>
+            <input type="text" name="reason" placeholder="e.g. wrong size, customer didn't like it">
+            <label>Refund Amount (Rs.)</label>
+            <input type="number" step="0.01" name="refund_amount" value="{{ "%.2f"|format(it['unit_price'] * remaining) }}">
+
+            <div class="exchange-fields hidden" id="exchange-fields-{{ it['id'] }}">
+              <div class="form-row">
+                <div>
+                  <label>New Item Type</label>
+                  <select name="exchange_item_type" class="ex-type-select" data-item="{{ it['id'] }}">
+                    <option value="frame">Frame</option>
+                    <option value="lens">Lens</option>
+                    <option value="contact_lens">Contact Lens</option>
+                  </select>
+                </div>
+                <div>
+                  <label>New Item</label>
+                  <select name="exchange_item_ref" class="ex-ref-select" data-item="{{ it['id'] }}"></select>
+                </div>
+              </div>
+              <label>Exchange Item Description</label>
+              <input type="text" name="exchange_description" class="ex-desc-input" data-item="{{ it['id'] }}">
+              <label>Exchange Item Price (Rs.)</label>
+              <input type="number" step="0.01" name="exchange_price" class="ex-price-input" data-item="{{ it['id'] }}" value="0">
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-small btn-primary">Confirm</button>
+              <button type="button" class="btn btn-small btn-secondary" onclick="document.getElementById('return-form-{{ it['id'] }}').classList.add('hidden')">Cancel</button>
+            </div>
+          </form>
+        </td>
+      </tr>
+      {% endif %}
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="order-grand-total">Order Total: Rs. {{ "%.2f"|format(items|sum(attribute='total_price')) }}</p>
+  {% if order['points_earned'] or order['points_redeemed'] %}
+  <p class="muted">
+    {% if order['points_redeemed'] %}Redeemed {{ order['points_redeemed']|round(2) }} points (Rs. {{ "%.2f"|format(order['points_discount_amount']) }} off).{% endif %}
+    {% if order['points_earned'] %}Earned {{ order['points_earned']|round(2) }} points on this order.{% endif %}
+  </p>
+  {% endif %}
+</div>
+
+{% if returns %}
+<div class="panel">
+  <h2>Returns / Exchanges History</h2>
+  <table class="table small">
+    <thead><tr><th>Date</th><th>Type</th><th>Item</th><th>Qty</th><th>Reason</th><th>Refund</th><th>Exchanged For</th></tr></thead>
+    <tbody>
+    {% for r in returns %}
+      <tr>
+        <td>{{ r['created_at'][:16] }}</td>
+        <td>{{ r['return_type'] }}</td>
+        <td>{{ r['item_type']|replace('_',' ')|title }}</td>
+        <td>{{ r['qty'] }}</td>
+        <td>{{ r['reason'] or '-' }}</td>
+        <td>Rs. {{ "%.2f"|format(r['refund_amount']) }}</td>
+        <td>{{ r['exchange_description'] or '-' }}{% if r['exchange_price'] %} (Rs. {{ "%.2f"|format(r['exchange_price']) }}){% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const RET_FRAMES = [
+{% for f in frames %}
+  {id: {{ f['id'] }}, label: {{ (f['brand'] + ' ' + (f['model'] or '') + ' ' + (f['color'] or ''))|tojson }}, price: {{ f['selling_price'] }}, stock: {{ f['stock_qty'] }}},
+{% endfor %}
+];
+const RET_LENSES = [
+{% for l in lenses %}
+  {id: {{ l['id'] }}, label: {{ (l['lens_type'] + ' - ' + (l['brand'] or ''))|tojson }}, price: {{ l['selling_price'] }}, stock: {{ l['stock_qty'] }}},
+{% endfor %}
+];
+const RET_CONTACTS = [
+{% for cl in contacts %}
+  {id: {{ cl['id'] }}, label: {{ (cl['brand'] + ' ' + (cl['lens_type'] or ''))|tojson }}, price: {{ cl['selling_price'] }}, stock: {{ cl['stock_qty'] }}},
+{% endfor %}
+];
+function retItemsForType(t) {
+  if (t === 'frame') return RET_FRAMES;
+  if (t === 'lens') return RET_LENSES;
+  if (t === 'contact_lens') return RET_CONTACTS;
+  return [];
+}
+document.querySelectorAll('.ret-type-select').forEach(sel => {
+  const itemId = sel.dataset.item;
+  const exFields = document.getElementById('exchange-fields-' + itemId);
+  sel.addEventListener('change', () => {
+    exFields.classList.toggle('hidden', sel.value !== 'Exchange');
+  });
+});
+function populateExRef(typeSel) {
+  const itemId = typeSel.dataset.item;
+  const refSel = document.querySelector(`.ex-ref-select[data-item="${itemId}"]`);
+  const descInput = document.querySelector(`.ex-desc-input[data-item="${itemId}"]`);
+  const priceInput = document.querySelector(`.ex-price-input[data-item="${itemId}"]`);
+  refSel.innerHTML = '<option value="">-- select --</option>';
+  retItemsForType(typeSel.value).forEach(it => {
+    const opt = document.createElement('option');
+    opt.value = it.id;
+    opt.textContent = `${it.label} - Rs.${it.price} (stock: ${it.stock})`;
+    opt.dataset.price = it.price;
+    opt.dataset.label = it.label;
+    refSel.appendChild(opt);
+  });
+  refSel.onchange = () => {
+    const opt = refSel.options[refSel.selectedIndex];
+    if (opt && opt.dataset.price) {
+      priceInput.value = opt.dataset.price;
+      descInput.value = opt.dataset.label;
+    }
+  };
+}
+document.querySelectorAll('.ex-type-select').forEach(sel => {
+  populateExRef(sel);
+  sel.addEventListener('change', () => populateExRef(sel));
+});
+</script>
+{% endblock %}

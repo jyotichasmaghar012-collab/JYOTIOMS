@@ -1,0 +1,32 @@
+{% extends "store/base.html" %}
+{% block title %}Track Order - {{ shop_name }}{% endblock %}
+{% block store_content %}
+<h1>Track Your Order</h1>
+<form method="POST" class="panel form-panel store-track-form">
+  <label>Order Number</label>
+  <input type="text" name="order_no" placeholder="e.g. WEB-0001" required value="{{ order['order_no'] if order else '' }}">
+  <label>Phone Number</label>
+  <input type="tel" name="phone" required value="{{ order['customer_phone'] if order else '' }}">
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Track</button>
+  </div>
+</form>
+
+{% if order %}
+<div class="panel store-order-summary">
+  <h2 class="section-title">Order {{ order['order_no'] }}</h2>
+  <p>Status: <strong>{{ order['status'] }}</strong></p>
+  <p>{{ 'Delivery to: ' + order['delivery_address'] if order['delivery_type'] == 'delivery' else 'Pickup from store' }}</p>
+  <table class="table">
+    <thead><tr><th>Item</th><th>Qty</th><th>Total</th></tr></thead>
+    <tbody>
+    {% for it in items %}
+      <tr><td>{{ it['description'] }}</td><td>{{ it['qty'] }}</td><td>{{ currency }} {{ '%.0f'|format(it['total_price']) }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% elif searched %}
+<p class="store-empty">Order not found.</p>
+{% endif %}
+{% endblock %}

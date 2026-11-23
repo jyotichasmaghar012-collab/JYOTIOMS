@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Shop Settings{% endblock %}
+{% block content %}
+<div class="page-header"><h1>Shop Settings</h1></div>
+<div class="panel form-panel">
+<form method="POST" enctype="multipart/form-data" data-ajax-save>
+  <label>Shop Name</label>
+  <input type="text" name="shop_name" value="{{ values['shop_name'] }}">
+
+  <label>Shop Logo</label>
+  <p class="hint">Shown in the staff sidebar and in the online store header. Recommended: a square or wide transparent PNG.</p>
+  {% if values['shop_logo_path'] %}
+  <div style="margin-bottom:10px;">
+    <img src="{{ url_for('static', filename=values['shop_logo_path']) }}" alt="Current logo" style="max-width:160px;max-height:80px;border-radius:8px;border:1px solid var(--border);display:block;margin-bottom:6px;background:#fff;padding:4px;">
+    <label class="checkbox-label"><input type="checkbox" name="remove_logo" value="1"> Remove current logo</label>
+  </div>
+  {% endif %}
+  <input type="file" name="shop_logo" accept="image/*,.svg">
+
+  <label>Address</label>
+  <textarea name="shop_address" rows="2">{{ values['shop_address'] }}</textarea>
+  <label>Phone</label>
+  <input type="text" name="shop_phone" value="{{ values['shop_phone'] }}">
+  <div class="form-row">
+    <div>
+      <label>GST %</label>
+      <input type="number" step="0.01" name="gst_percent" value="{{ values['gst_percent'] }}">
+    </div>
+    <div>
+      <label>Currency Symbol</label>
+      <input type="text" name="currency_symbol" value="{{ values['currency_symbol'] }}">
+    </div>
+  </div>
+  <div class="form-row">
+    <div>
+      <label>Invoice Number Prefix</label>
+      <input type="text" name="invoice_prefix" value="{{ values['invoice_prefix'] }}">
+    </div>
+    <div>
+      <label>Order Number Prefix</label>
+      <input type="text" name="order_prefix" value="{{ values['order_prefix'] }}">
+    </div>
+  </div>
+  <h2 class="section-title">Online Store</h2>
+  <label class="checkbox-label">
+    <input type="checkbox" name="store_enabled" value="1" {{ 'checked' if values['store_enabled'] != '0' else '' }}>
+    Keep the online store active (customers will be able to order at {{ request.host_url }}store/)
+  </label>
+  <label>Store Tagline</label>
+  <input type="text" name="store_tagline" value="{{ values['store_tagline'] }}">
+  <div class="form-row">
+    <div>
+      <label>Delivery Charge</label>
+      <input type="number" step="0.01" name="store_delivery_charge" value="{{ values['store_delivery_charge'] }}">
+    </div>
+    <div>
+      <label>Online Order Number Prefix</label>
+      <input type="text" name="online_order_prefix" value="{{ values['online_order_prefix'] }}">
+    </div>
+  </div>
+  <label>Default Branch for Online Orders</label>
+  <select name="store_default_branch_id">
+    <option value="">-- First branch (default) --</option>
+    {% for b in branches %}
+    <option value="{{ b['id'] }}" {{ 'selected' if values['store_default_branch_id']|string == b['id']|string else '' }}>{{ b['name'] }}</option>
+    {% endfor %}
+  </select>
+
+  <h3 class="section-title" style="font-size:15px;margin-top:20px;">Storefront Ad / Banner Space</h3>
+  <p class="hint">Upload an image to show as a promotional banner on the online store's home page (below the tagline, above the products). Recommended: a wide image, roughly 1200&times;350px.</p>
+  {% if values['store_banner_image'] %}
+  <div style="margin-bottom:10px;">
+    <img src="{{ url_for('static', filename=values['store_banner_image']) }}" alt="Current banner" style="max-width:320px;max-height:100px;border-radius:8px;border:1px solid var(--border);display:block;margin-bottom:6px;">
+    <label class="checkbox-label"><input type="checkbox" name="remove_banner" value="1"> Remove current banner</label>
+  </div>
+  {% endif %}
+  <label>{{ 'Replace Banner Image' if values['store_banner_image'] else 'Banner Image' }}</label>
+  <input type="file" name="banner_image" accept="image/*">
+  <label>Banner Link (optional)</label>
+  <input type="text" name="store_banner_link" value="{{ values['store_banner_link'] }}" placeholder="https://... (where customers go if they tap the banner)">
+
+  <h3 class="section-title" style="font-size:15px;margin-top:20px;">Online Payment (Razorpay) - optional</h3>
+  <p class="hint">This will only work if you have a Razorpay account and a paid PythonAnywhere plan (the free plan blocks outbound internet). As long as the keys are left blank, customers will only be able to order via "Cash on Pickup/Delivery".</p>
+  <div class="form-row">
+    <div>
+      <label>Razorpay Key ID</label>
+      <input type="text" name="razorpay_key_id" value="{{ values['razorpay_key_id'] }}" placeholder="rzp_live_...">
+    </div>
+    <div>
+      <label>Razorpay Key Secret</label>
+      <input type="password" name="razorpay_key_secret" value="{{ values['razorpay_key_secret'] }}">
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Save Settings</button>
+  </div>
+</form>
+</div>
+{% endblock %}

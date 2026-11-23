@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}New Prescription{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>New Prescription - {{ customer['name'] }}</h1>
+</div>
+<div class="panel form-panel">
+<form method="POST" data-ajax-save>
+  <label>Eye Test / Prescription No. (optional)</label>
+  <input type="text" name="rx_number" placeholder="Reference number from the eye-test slip">
+
+  <div class="rx-grid">
+    <div></div><div class="rx-col-label">SPH</div><div class="rx-col-label">CYL</div><div class="rx-col-label">AXIS</div>
+    <div class="rx-row-label">Right Eye (OD)</div>
+    <input type="text" name="od_sph" placeholder="e.g. -1.25">
+    <input type="text" name="od_cyl" placeholder="e.g. -0.50">
+    <input type="text" name="od_axis" placeholder="e.g. 90">
+    <div class="rx-row-label">Left Eye (OS)</div>
+    <input type="text" name="os_sph" placeholder="e.g. -1.00">
+    <input type="text" name="os_cyl" placeholder="e.g. -0.75">
+    <input type="text" name="os_axis" placeholder="e.g. 85">
+  </div>
+
+  <label>ADD Power</label>
+  <input type="text" name="add_power" placeholder="e.g. +2.00">
+
+  <label>PD (Pupillary Distance)</label>
+  <input type="text" name="pd" placeholder="e.g. 62mm">
+
+  <label>Prescribed By</label>
+  <div class="inline-form">
+    <select name="prescribed_by" id="prescribed_by_select" style="flex:1;">
+      <option value="">-- Select --</option>
+    </select>
+    <button type="button" class="btn btn-small btn-secondary" id="add-prescriber-btn">+ New</button>
+  </div>
+  <div id="new-prescriber-row" class="hidden inline-form">
+    <input type="text" id="new-prescriber-input" placeholder="Type a new name">
+    <button type="button" class="btn btn-small btn-primary" id="save-prescriber-btn">Add</button>
+    <button type="button" class="btn btn-small btn-secondary" id="cancel-prescriber-btn">Cancel</button>
+  </div>
+
+  <label>Prescribed Date</label>
+  <input type="date" name="prescribed_date">
+
+  <label>Notes</label>
+  <textarea name="notes" rows="2"></textarea>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Save Prescription</button>
+    <a href="{{ url_for('customers.detail', customer_id=customer['id']) }}" class="btn btn-secondary">Cancel</a>
+  </div>
+</form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+initPrescriberPicker({
+  selectId: 'prescribed_by_select', addBtnId: 'add-prescriber-btn', rowId: 'new-prescriber-row',
+  inputId: 'new-prescriber-input', saveBtnId: 'save-prescriber-btn', cancelBtnId: 'cancel-prescriber-btn'
+});
+</script>
+{% endblock %}

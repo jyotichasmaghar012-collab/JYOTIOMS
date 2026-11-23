@@ -1,0 +1,64 @@
+{% extends "store/base.html" %}
+{% block title %}Edit Your Review - {{ shop_name }}{% endblock %}
+{% block store_content %}
+<a href="{{ url_for('store.product_detail', item_type=review['item_type'], item_id=review['item_id']) }}#reviews" class="store-back-link">&larr; Back to product</a>
+
+<div class="store-review-edit-page">
+  <h1>Edit Your Review</h1>
+  <p class="muted">You can edit this review until the edit window closes. Editing sends it back for a quick moderation check unless auto-approve is on.</p>
+
+  <form method="POST" enctype="multipart/form-data" class="store-review-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Your Rating</label>
+    <div class="store-review-star-input" id="store-star-input">
+      {% for i in range(1,6) %}
+      <button type="button" class="store-star-btn{{ ' filled' if i <= review['rating'] else '' }}" data-value="{{ i }}" aria-label="{{ i }} star">★</button>
+      {% endfor %}
+      <input type="hidden" name="rating" id="store-star-input-value" value="{{ review['rating'] }}">
+    </div>
+    <label for="review-title-input">Review Title</label>
+    <input type="text" name="title" id="review-title-input" maxlength="150" value="{{ review['title'] }}" required>
+    <label for="review-body-input">Review Description</label>
+    <textarea name="body" id="review-body-input" rows="4" maxlength="4000" required>{{ review['body'] }}</textarea>
+
+    {% if images %}
+    <label>Existing Photos</label>
+    <div class="store-review-photos">
+      {% for img in images %}
+      <img src="{{ url_for('static', filename=img['file_path']) }}" alt="Review photo" class="store-review-photo-thumb">
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if images|length < 5 %}
+    <label>Add More Photos (optional)</label>
+    <input type="file" name="images" accept="image/png,image/jpeg,image/webp" multiple>
+    {% endif %}
+
+    <label class="store-review-anon"><input type="checkbox" name="is_anonymous" {{ 'checked' if review['is_anonymous'] else '' }}> Post anonymously (hide my name)</label>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Save Changes</button>
+      <a href="{{ url_for('store.product_detail', item_type=review['item_type'], item_id=review['item_id']) }}#reviews" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<script>
+(function () {
+  var starWrap = document.getElementById("store-star-input");
+  if (!starWrap) return;
+  var starBtns = Array.from(starWrap.querySelectorAll(".store-star-btn"));
+  var starValue = document.getElementById("store-star-input-value");
+  function paintStars(value) {
+    starBtns.forEach(function (b) { b.classList.toggle("filled", parseInt(b.dataset.value, 10) <= value); });
+  }
+  starBtns.forEach(function (b) {
+    b.addEventListener("click", function () {
+      var v = parseInt(b.dataset.value, 10);
+      starValue.value = v;
+      paintStars(v);
+    });
+  });
+})();
+</script>
+{% endblock %}

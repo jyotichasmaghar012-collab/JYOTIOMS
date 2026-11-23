@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit Brand' if brand else 'Add Brand' }}{% endblock %}
+{% block content %}
+{% macro val(name, default='') %}{{ (form.get(name, default) if form else (brand[name] if brand and brand[name] is not none else default)) }}{% endmacro %}
+<div class="page-header">
+  <h1>{{ 'Edit Brand' if brand else 'Add Brand' }}</h1>
+  <div class="page-actions">
+    <a href="{{ url_for('brands.index') }}" class="btn btn-small btn-secondary">Back to Brands</a>
+  </div>
+</div>
+
+<div class="panel form-panel">
+<form method="POST" enctype="multipart/form-data" data-ajax-save>
+  <label>Brand Name *</label>
+  <input type="text" name="name" required value="{{ val('name') }}">
+
+  <div class="form-row">
+    <div>
+      <label>Logo (optional)</label>
+      {% if brand and brand['logo_path'] %}
+      <div class="product-photo-preview"><img src="{{ url_for('static', filename=brand['logo_path']) }}" alt=""></div>
+      <label class="checkbox-label"><input type="checkbox" name="remove_logo" value="1"> Remove logo</label>
+      {% endif %}
+      <input type="file" name="logo" accept="image/png,image/jpeg,image/webp">
+      <p class="field-hint">JPG, PNG or WEBP. A small square/landscape logo works best - larger uploads are automatically resized.</p>
+    </div>
+    <div>
+      <label>Display Order</label>
+      <input type="number" name="display_order" value="{{ val('display_order', 0) if brand else 0 }}">
+      <p class="field-hint">Lower numbers show first in the "Shop by Brand" section.</p>
+    </div>
+  </div>
+
+  <label>Description (optional)</label>
+  <textarea name="description" rows="3">{{ val('description') }}</textarea>
+
+  <div class="form-row">
+    <div>
+      <label class="checkbox-label">
+        <input type="checkbox" name="is_active" value="1" {{ 'checked' if (form.get('is_active') if form else (brand is none or brand['is_active'])) else '' }}>
+        Active (visible on the storefront)
+      </label>
+    </div>
+    <div></div>
+  </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a href="{{ url_for('brands.index') }}" class="btn btn-secondary">Cancel</a>
+  </div>
+</form>
+</div>
+{% endblock %}

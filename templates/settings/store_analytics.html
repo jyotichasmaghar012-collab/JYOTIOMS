@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% from "_pagination.html" import render_pagination %}
+{% block title %}Online Store Analytics{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Online Store Analytics</h1>
+  <div class="page-actions">
+    <a href="{{ url_for('store.home') }}" target="_blank" rel="noopener" class="btn btn-secondary">🌐 View Store ↗</a>
+  </div>
+</div>
+
+<div class="stat-grid">
+  <div class="stat-card">
+    <div class="stat-label">Total Visits</div>
+    <div class="stat-value">{{ total_visits }}</div>
+  </div>
+  <div class="stat-card good">
+    <div class="stat-label">Unique Visitors</div>
+    <div class="stat-value">{{ unique_visitors }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Today's Visits</div>
+    <div class="stat-value">{{ today_visits }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Last 7 Days</div>
+    <div class="stat-value">{{ week_visits }}</div>
+  </div>
+  <div class="stat-card good">
+    <div class="stat-label">Registered Customers</div>
+    <div class="stat-value">{{ registered_customers }}</div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="panel">
+    <h2>Most Visited Pages</h2>
+    {% if popular_pages %}
+    <table class="table small">
+      <thead><tr><th>Page</th><th>Visits</th></tr></thead>
+      <tbody>
+      {% for p in popular_pages %}
+        <tr><td>{{ p['path'] }}</td><td>{{ p['c'] }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty">No visits recorded yet.</p>
+    {% endif %}
+  </div>
+
+  <div class="panel">
+    <h2>Recent Visitors</h2>
+    {% if recent_visits %}
+    <table class="table small">
+      <thead><tr><th>Page</th><th>Visitor</th><th>When</th></tr></thead>
+      <tbody>
+      {% for v in recent_visits %}
+        <tr>
+          <td>{{ v['path'] }}</td>
+          <td>{{ v['customer_name'] or 'Guest' }}</td>
+          <td>{{ v['visited_at'] }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {{ render_pagination(visits_page, visits_total_pages, visits_total, visits_page_url) }}
+    {% else %}
+    <p class="empty">No visits recorded yet.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

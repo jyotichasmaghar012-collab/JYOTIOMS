@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+{% block bare_content %}
+<div class="login-page">
+  <div class="login-card">
+    <div class="login-brand">
+      {% if shop_logo %}
+      <img src="{{ url_for('static', filename=shop_logo) }}" alt="{{ shop_name }}" class="login-logo">
+      {% else %}
+      <span class="brand-logo-fallback" style="font-size:22px;">{{ shop_name }}</span>
+      {% endif %}
+    </div>
+    <h1>OMS Login</h1>
+    <form method="POST">
+      <label>Username</label>
+      <input type="text" name="username" autofocus required>
+      <label>Password</label>
+      <input type="password" name="password" required>
+      <button type="submit" class="btn btn-primary btn-block">Login</button>
+    </form>
+    <p class="hint">Default admin login: <strong>admin</strong> / <strong>admin123</strong> (log in the first time and change the password from Settings &gt; Change Password)</p>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Offline - Jyoti Chasmaghar OMS</title>
+<style>
+  body {
+    margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: #f7f5f5; color: #241414; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    text-align: center; padding: 24px; box-sizing: border-box;
+  }
+  .box { max-width: 380px; }
+  .icon { font-size: 44px; margin-bottom: 8px; }
+  h1 { font-size: 20px; margin: 0 0 10px; }
+  p { color: #7a6a6a; font-size: 14px; line-height: 1.5; margin: 0 0 20px; }
+  button {
+    background: #d32027; color: #fff; border: none; border-radius: 8px;
+    padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+  <div class="box">
+    <div class="icon">📡</div>
+    <h1>No internet connection</h1>
+    <p>Aap abhi offline hain. Live order/inventory data dikhane ke liye internet connection chahiye - stale data dikhana risky hai (galat stock/order status).</p>
+    <button onclick="window.location.reload()">Try Again</button>
+  </div>
+</body>
+</html>

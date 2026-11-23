@@ -1,0 +1,39 @@
+{% extends "store/base.html" %}
+{% block title %}Pay - {{ shop_name }}{% endblock %}
+{% block store_content %}
+<div class="store-confirmation">
+  <h1>Complete Payment</h1>
+  <p>Order Number: <strong>{{ order['order_no'] }}</strong></p>
+  <p>Amount: {{ currency }} {{ '%.0f'|format(amount_paise / 100) }}</p>
+  <button id="rzp-pay-btn" class="btn btn-primary">Pay Now</button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+document.getElementById('rzp-pay-btn').addEventListener('click', function () {
+  const options = {
+    key: {{ key_id|tojson }},
+    amount: {{ amount_paise }},
+    currency: 'INR',
+    name: {{ shop_name|tojson }},
+    order_id: {{ razorpay_order_id|tojson }},
+    handler: function (response) {
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = "{{ url_for('store.pay_verify', order_id=order['id']) }}";
+      ['razorpay_payment_id', 'razorpay_order_id', 'razorpay_signature'].forEach(function (key) {
+        const input = document.createElement('input');
+        input.type = 'hidden'; input.name = key; input.value = response[key];
+        form.appendChild(input);
+      });
+      document.body.appendChild(form);
+      form.submit();
+    },
+  };
+  const rzp = new Razorpay(options);
+  rzp.open();
+});
+</script>
+{% endblock %}

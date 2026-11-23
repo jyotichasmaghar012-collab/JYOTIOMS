@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Coupons & Discounts{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Coupons &amp; Discounts</h1>
+  <div class="page-actions">
+    <a href="{{ url_for('coupons.new') }}" class="btn btn-primary btn-small">+ Add Coupon</a>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-header-row">
+    <h2>All Coupons</h2>
+    <form method="GET" class="attr-search-form">
+      <select name="status" onchange="this.form.submit()">
+        <option value="" {{ 'selected' if not status else '' }}>All statuses</option>
+        <option value="active" {{ 'selected' if status == 'active' else '' }}>Active</option>
+        <option value="inactive" {{ 'selected' if status == 'inactive' else '' }}>Inactive</option>
+      </select>
+      <input type="text" name="q" value="{{ q }}" placeholder="Search code or name...">
+      <button type="submit" class="btn btn-small btn-secondary">Search</button>
+      {% if q or status %}<a href="{{ url_for('coupons.index') }}" class="btn btn-small">Clear</a>{% endif %}
+    </form>
+  </div>
+
+  {% if coupons %}
+  <table class="table">
+    <thead><tr>
+      <th>Code</th><th>Name</th><th>Discount</th><th>Validity</th><th>Usage</th><th>Status</th><th></th>
+    </tr></thead>
+    <tbody>
+    {% for c in coupons %}
+    <tr>
+      <td><strong>{{ c['code'] }}</strong></td>
+      <td>{{ c['name'] }}</td>
+      <td>
+        {% if c['discount_type'] == 'percentage' %}{{ c['discount_value']|round(2) }}% off
+          {% if c['max_discount_amount'] %}<span class="muted"> (max Rs. {{ "%.2f"|format(c['max_discount_amount']) }})</span>{% endif %}
+        {% else %}Rs. {{ "%.2f"|format(c['discount_value']) }} off{% endif %}
+        {% if c['min_order_value'] %}<div class="muted" style="font-size:12px;">Min order Rs. {{ "%.2f"|format(c['min_order_value']) }}</div>{% endif %}
+      </td>
+      <td class="muted" style="font-size:12px;">
+        {% if c['start_date'] or c['expiry_date'] %}{{ c['start_date'] or '...' }} &rarr; {{ c['expiry_date'] or '...' }}
+          {% if c['expiry_date'] and c['expiry_date'] < today %}<br><span class="badge status-due">Expired</span>{% endif %}
+        {% else %}Always{% endif %}
+      </td>
+      <td>
+        {{ usage_counts.get(c['id'], 0) }}{% if c['usage_limit_total'] %} / {{ c['usage_limit_total'] }}{% endif %}
+        {% if c['usage_limit_per_customer'] %}<div class="muted" style="font-size:12px;">Max {{ c['usage_limit_per_customer'] }}/customer</div>{% endif %}
+        {% if c['customer_eligibility'] == 'new_customers' %}<div class="muted" style="font-size:12px;">New customers only</div>{% endif %}
+      </td>
+      <td>
+        {% if c['is_active'] %}<span class="badge status-paid">Active</span>
+        {% else %}<span class="badge status-due">Inactive</span>{% endif %}
+      </td>
+      <td>
+        <a href="{{ url_for('coupons.edit', coupon_id=c['id']) }}" class="btn btn-small">Edit</a>
+        <form method="POST" action="{{ url_for('coupons.duplicate', coupon_id=c['id']) }}" style="display:inline" data-ajax-save>
+          <button type="submit" class="btn btn-small btn-secondary">Duplicate</button>
+        </form>
+        <form method="POST" action="{{ url_for('coupons.toggle', coupon_id=c['id']) }}" style="display:inline" data-ajax-save>
+          <button type="submit" class="btn btn-small {{ 'btn-secondary' if c['is_active'] else 'btn-primary' }}">
+            {{ 'Deactivate' if c['is_active'] else 'Activate' }}
+          </button>
+        </form>
+        <form method="POST" action="{{ url_for('coupons.delete', coupon_id=c['id']) }}" style="display:inline" onsubmit="return confirm('Delete this coupon? This cannot be undone.');" data-ajax-save>
+          <button type="submit" class="btn btn-small btn-danger">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No coupons {% if q or status %}match this search{% else %}yet - <a href="{{ url_for('coupons.new') }}">add the first one</a>{% endif %}.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,43 @@
+{# Shared pagination control - used by every long admin list page (Orders,
+   Customers, Invoices, Frames, Lenses, Contact Lenses, Purchase Orders,
+   Purchase Requests, Reviews, Recent Visitors, Notifications, ...).
+
+   Usage from a page's template:
+     {% from "_pagination.html" import render_pagination %}
+     {{ render_pagination(page, total_pages, total, page_url) }}
+
+   `page_url` is a plain Python callable passed in from the route (e.g.
+   `page_url=lambda p: url_for('orders.index', status=status, q=q, page=p)`)
+   that builds the link for a given page number while preserving whatever
+   search/filter query params that page already has - the macro itself
+   doesn't need to know what those filters are.
+
+   Only ever shows a small window of page numbers around the current page
+   (plus first/last) with "…" gaps, never one link per page - a table with
+   thousands of rows would otherwise mean thousands of page links. #}
+{% macro render_pagination(page, total_pages, total, page_url) %}
+{% if total_pages > 1 %}
+<nav class="pagination" aria-label="Pagination">
+  {% if page > 1 %}
+  <a href="{{ page_url(page - 1) }}" class="page-link page-nav">&laquo; Prev</a>
+  {% else %}
+  <span class="page-link page-nav disabled">&laquo; Prev</span>
+  {% endif %}
+
+  {% for p in pagination_window(page, total_pages, 2) %}
+    {% if p is none %}
+      <span class="page-ellipsis">&hellip;</span>
+    {% else %}
+      <a href="{{ page_url(p) }}" class="page-link {{ 'active' if p == page else '' }}">{{ p }}</a>
+    {% endif %}
+  {% endfor %}
+
+  {% if page < total_pages %}
+  <a href="{{ page_url(page + 1) }}" class="page-link page-nav">Next &raquo;</a>
+  {% else %}
+  <span class="page-link page-nav disabled">Next &raquo;</span>
+  {% endif %}
+</nav>
+<p class="pagination-summary muted">Page {{ page }} of {{ total_pages }} &middot; {{ total }} total</p>
+{% endif %}
+{% endmacro %}

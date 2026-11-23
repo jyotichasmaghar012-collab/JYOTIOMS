@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit Coupon' if coupon else 'Add Coupon' }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>{{ 'Edit Coupon' if coupon else 'Add Coupon' }}</h1>
+</div>
+<div class="panel form-panel">
+<form method="POST" data-ajax-save>
+  <div class="form-row">
+    <div>
+      <label>Coupon Code *</label>
+      <input type="text" name="code" required maxlength="40" placeholder="e.g. WELCOME100"
+             style="text-transform:uppercase"
+             value="{{ (form.code if form else (coupon['code'] if coupon else '')) }}">
+    </div>
+    <div>
+      <label>Coupon Name *</label>
+      <input type="text" name="name" required
+             value="{{ (form.name if form else (coupon['name'] if coupon else '')) }}">
+    </div>
+  </div>
+
+  <label>Description</label>
+  <textarea name="description" rows="2" placeholder="Internal note / shown to customers if you choose to display it">{{ (form.description if form else ((coupon['description'] if coupon else '') or '')) }}</textarea>
+
+  <div class="form-row">
+    <div>
+      <label>Discount Type *</label>
+      {% set dtype = (form.discount_type if form else (coupon['discount_type'] if coupon else 'percentage')) %}
+      <select name="discount_type" required>
+        <option value="percentage" {{ 'selected' if dtype == 'percentage' else '' }}>Percentage (%)</option>
+        <option value="fixed" {{ 'selected' if dtype == 'fixed' else '' }}>Fixed Amount (Rs.)</option>
+      </select>
+    </div>
+    <div>
+      <label>Discount Value *</label>
+      <input type="number" step="0.01" min="0" name="discount_value" required
+             value="{{ (form.discount_value if form else (coupon['discount_value'] if coupon else '')) }}">
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div>
+      <label>Minimum Order Value</label>
+      <input type="number" step="0.01" min="0" name="min_order_value"
+             value="{{ (form.min_order_value if form else (coupon['min_order_value'] if coupon else 0)) }}">
+    </div>
+    <div>
+      <label>Maximum Discount Amount</label>
+      <input type="number" step="0.01" min="0" name="max_discount_amount" placeholder="Optional - caps a % discount"
+             value="{{ (form.max_discount_amount if form else ((coupon['max_discount_amount'] if coupon and coupon['max_discount_amount'] is not none else ''))) }}">
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div>
+      <label>Start Date</label>
+      <input type="date" name="start_date"
+             value="{{ (form.start_date if form else (coupon['start_date'] if coupon else '')) or '' }}">
+    </div>
+    <div>
+      <label>Expiry Date</label>
+      <input type="date" name="expiry_date"
+             value="{{ (form.expiry_date if form else (coupon['expiry_date'] if coupon else '')) or '' }}">
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div>
+      <label>Usage Limit (Total)</label>
+      <input type="number" min="1" step="1" name="usage_limit_total" placeholder="Blank = unlimited"
+             value="{{ (form.usage_limit_total if form else ((coupon['usage_limit_total'] if coupon and coupon['usage_limit_total'] is not none else ''))) }}">
+    </div>
+    <div>
+      <label>Usage Limit Per Customer</label>
+      <input type="number" min="1" step="1" name="usage_limit_per_customer" placeholder="Blank = unlimited"
+             value="{{ (form.usage_limit_per_customer if form else ((coupon['usage_limit_per_customer'] if coupon and coupon['usage_limit_per_customer'] is not none else ''))) }}">
+    </div>
+  </div>
+
+  <label>Customer Eligibility</label>
+  {% set elig = (form.customer_eligibility if form else (coupon['customer_eligibility'] if coupon else 'all')) %}
+  <select name="customer_eligibility">
+    <option value="all" {{ 'selected' if elig == 'all' else '' }}>All Customers</option>
+    <option value="new_customers" {{ 'selected' if elig == 'new_customers' else '' }}>New Customers Only (first order)</option>
+  </select>
+
+  <h2 class="section-title">Applies To</h2>
+  <p class="field-hint">Leave all three blank to apply this coupon to the entire order. Selecting any option below restricts the discount to only the matching items in the cart.</p>
+  <div class="form-row">
+    <div>
+      <label>Applicable Categories</label>
+      {% set sel_cats = (form.applicable_categories if form else []) %}
+      <select name="applicable_categories" multiple size="6">
+        {% for cat in categories %}
+        <option value="{{ cat['id'] }}" {{ 'selected' if cat['id']|string in sel_cats else '' }}>{{ cat['name'] }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Applicable Brands</label>
+      {% set sel_brands = (form.applicable_brands if form else []) %}
+      <select name="applicable_brands" multiple size="6">
+        {% for b in brands %}
+        <option value="{{ b['id'] }}" {{ 'selected' if b['id']|string in sel_brands else '' }}>{{ b['name'] }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+  <label>Applicable Products</label>
+  {% set sel_products = (form.applicable_products if form else []) %}
+  <select name="applicable_products" multiple size="8">
+    {% for f in frames %}
+    <option value="frame:{{ f['id'] }}" {{ 'selected' if ('frame:' ~ f['id']) in sel_products else '' }}>Frame: {{ f['brand'] }} {{ f['model'] or '' }}</option>
+    {% endfor %}
+    {% for c in contacts %}
+    <option value="contact_lens:{{ c['id'] }}" {{ 'selected' if ('contact_lens:' ~ c['id']) in sel_products else '' }}>Contact Lens: {{ c['brand'] }} {{ c['lens_type'] or '' }}</option>
+    {% endfor %}
+  </select>
+  <p class="field-hint">Categories/Brands only match Frames (Contact Lenses aren't categorized). Use Applicable Products to target specific Contact Lenses.</p>
+
+  <label class="checkbox-label" style="margin-top:16px;">
+    <input type="checkbox" name="is_active" value="1" {{ 'checked' if (form.is_active if form else (coupon['is_active'] if coupon else 1)) else '' }}>
+    Active
+  </label>
+  <input type="hidden" name="is_active_present" value="1">
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a href="{{ url_for('coupons.index') }}" class="btn btn-secondary">Cancel</a>
+  </div>
+</form>
+</div>
+{% endblock %}

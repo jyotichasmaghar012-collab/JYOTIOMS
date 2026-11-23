@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}Memberships{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Memberships</h1>
+  <div class="page-actions">
+    <a href="{{ url_for('membership.members') }}" class="btn btn-primary btn-small">View Members</a>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-header-row">
+    <h2>Tiers (free, automatic)</h2>
+  </div>
+  <p class="muted">Every customer sits in one of these tiers based on how much they've spent with you (lifetime, across all non-cancelled orders) - the discount applies automatically at checkout, no code needed. Edit thresholds/discounts any time.</p>
+
+  <table class="table">
+    <thead><tr><th>Tier</th><th>Min. Lifetime Spend</th><th>Discount</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for t in tiers %}
+    <tr>
+      <td colspan="3">
+        <form method="POST" action="{{ url_for('membership.edit_tier', tier_id=t['id']) }}" class="attr-inline-edit-form" data-ajax-save style="gap:8px;flex-wrap:wrap;">
+          <input type="text" name="name" value="{{ t['name'] }}" maxlength="40" required style="max-width:120px;">
+          <span class="muted">Rs.</span>
+          <input type="number" name="min_spend" value="{{ '%.0f'|format(t['min_spend']) }}" min="0" step="1" required style="max-width:110px;">
+          <span class="muted">spend &rarr;</span>
+          <input type="number" name="discount_percent" value="{{ t['discount_percent']|round(2) }}" min="0" max="100" step="0.5" required style="max-width:80px;">
+          <span class="muted">% off</span>
+          <button type="submit" class="btn btn-small btn-secondary">Save</button>
+        </form>
+      </td>
+      <td>
+        {% if t['is_active'] %}<span class="badge status-paid">Active</span>{% else %}<span class="badge status-due">Inactive</span>{% endif %}
+      </td>
+      <td>
+        <form method="POST" action="{{ url_for('membership.toggle_tier', tier_id=t['id']) }}" style="display:inline" data-ajax-save>
+          <button type="submit" class="btn btn-small {{ 'btn-secondary' if t['is_active'] else 'btn-primary' }}">
+            {{ 'Deactivate' if t['is_active'] else 'Activate' }}
+          </button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <form method="POST" action="{{ url_for('membership.new_tier') }}" class="attr-add-form" data-ajax-save style="margin-top:14px;flex-wrap:wrap;">
+    <input type="text" name="name" placeholder="New tier name (e.g. Diamond)" required maxlength="40" style="max-width:160px;">
+    <input type="number" name="min_spend" placeholder="Min. spend (Rs.)" min="0" step="1" required style="max-width:140px;">
+    <input type="number" name="discount_percent" placeholder="Discount %" min="0" max="100" step="0.5" required style="max-width:110px;">
+    <button type="submit" class="btn btn-primary btn-small">+ Add Tier</button>
+  </form>
+</div>
+
+<div class="panel">
+  <div class="panel-header-row">
+    <h2>Paid Plans</h2>
+  </div>
+  <p class="muted">A customer buys (or you manually enroll them in) a paid plan for a fixed duration - it carries its own checkout discount, applied instead of their tier discount whenever it's the bigger of the two.</p>
+
+  {% if plans %}
+  <table class="table">
+    <thead><tr><th>Plan</th><th>Price</th><th>Duration</th><th>Discount</th><th>Active Members</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for p in plans %}
+    <tr>
+      <td><strong>{{ p['name'] }}</strong>{% if p['benefits'] %}<div class="muted" style="font-size:12px;white-space:pre-line;">{{ p['benefits'] }}</div>{% endif %}</td>
+      <td>Rs. {{ '%.0f'|format(p['price']) }}</td>
+      <td>{{ p['duration_days'] }} days</td>
+      <td>{{ p['discount_percent']|round(2) }}%</td>
+      <td>{{ plan_member_counts.get(p['id'], 0) }}</td>
+      <td>{% if p['is_active'] %}<span class="badge status-paid">Active</span>{% else %}<span class="badge status-due">Inactive</span>{% endif %}</td>
+      <td>
+        <button type="button" class="btn btn-small" onclick="document.getElementById('edit-plan-{{ p['id'] }}').classList.toggle('hidden')">Edit</button>
+        <form method="POST" action="{{ url_for('membership.toggle_plan', plan_id=p['id']) }}" style="display:inline" data-ajax-save>
+          <button type="submit" class="btn btn-small {{ 'btn-secondary' if p['is_active'] else 'btn-primary' }}">
+            {{ 'Deactivate' if p['is_active'] else 'Activate' }}
+          </button>
+        </form>
+      </td>
+    </tr>
+    <tr id="edit-plan-{{ p['id'] }}" class="hidden">
+      <td colspan="7">
+        <form method="POST" action="{{ url_for('membership.edit_plan', plan_id=p['id']) }}" class="form-panel" data-ajax-save style="max-width:520px;">
+          <label>Plan Name</label>
+          <input type="text" name="name" value="{{ p['name'] }}" required maxlength="60">
+          <label>Price (Rs.)</label>
+          <input type="number" name="price" value="{{ '%.0f'|format(p['price']) }}" min="0" step="1" required>
+          <label>Duration (days)</label>
+          <input type="number" name="duration_days" value="{{ p['duration_days'] }}" min="1" step="1" required>
+          <label>Discount %</label>
+          <input type="number" name="discount_percent" value="{{ p['discount_percent']|round(2) }}" min="0" max="100" step="0.5" required>
+          <label>Benefits (one per line, shown to customers)</label>
+          <textarea name="benefits" rows="4">{{ p['benefits'] or '' }}</textarea>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary btn-small">Save Plan</button>
+          </div>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <details style="margin-top:14px;">
+    <summary class="btn btn-small btn-secondary" style="display:inline-block;cursor:pointer;">+ Add Plan</summary>
+    <form method="POST" action="{{ url_for('membership.new_plan') }}" class="form-panel" data-ajax-save style="max-width:520px;margin-top:10px;">
+      <label>Plan Name</label>
+      <input type="text" name="name" placeholder="e.g. Premium" required maxlength="60">
+      <label>Price (Rs.)</label>
+      <input type="number" name="price" min="0" step="1" required>
+      <label>Duration (days)</label>
+      <input type="number" name="duration_days" value="365" min="1" step="1" required>
+      <label>Discount %</label>
+      <input type="number" name="discount_percent" min="0" max="100" step="0.5" required>
+      <label>Benefits (one per line, shown to customers)</label>
+      <textarea name="benefits" rows="4" placeholder="15% off every order&#10;Priority eye checkup booking"></textarea>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary btn-small">Add Plan</button>
+      </div>
+    </form>
+  </details>
+</div>
+
+<div class="panel">
+  <div class="panel-header-row">
+    <h2>Points Program (Premium members only)</h2>
+  </div>
+  <p class="muted">Active Premium members earn loyalty points on every order (online or in-store), based on the final amount they actually pay after all other discounts. They can redeem their points balance for a discount on any FUTURE order (never the same order that earned them). Both rates below are fully editable any time.</p>
+
+  <form method="POST" action="{{ url_for('membership.save_points_settings') }}" class="form-panel" data-ajax-save style="max-width:520px;">
+    <label>Points earned per Rs.1 paid (final amount, after all other discounts)</label>
+    <input type="number" name="points_earn_rate" value="{{ points_earn_rate|round(4) }}" min="0" step="0.01" required>
+    <label>Points required to redeem Rs.1 of discount</label>
+    <input type="number" name="points_redeem_rate" value="{{ points_redeem_rate|round(4) }}" min="0.01" step="0.01" required>
+    <p class="muted" style="font-size:12px;">Example with the values above: a Premium member paying Rs. {{ '%.0f'|format(1000) }} earns {{ (1000 * points_earn_rate)|round(2) }} points, and {{ points_redeem_rate }} points can later be redeemed for Rs. 1 off a future order.</p>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary btn-small">Save Points Settings</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

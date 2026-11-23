@@ -1,0 +1,2004 @@
+:root {
+  --brand-red: #d32027;
+  --primary: #201a1a;
+  --primary-dark: #000000;
+  --primary-light: #ececec;
+  --danger: #dc2626;
+  --success: #16a34a;
+  --warn: #d97706;
+  --bg: #f7f5f5;
+  --panel-bg: #ffffff;
+  --border: #ede2e2;
+  --text: #241414;
+  --text-muted: #7a6a6a;
+  --sidebar-bg: #ffffff;
+  --sidebar-text: #4a3a3a;
+  --sidebar-active: #201a1a;
+  --radius: 10px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+a { color: var(--primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 240px;
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 0;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 20px 20px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+.brand-logo { max-width: 100%; max-height: 64px; display: block; }
+.brand-logo-fallback { font-size: 17px; font-weight: 700; color: var(--sidebar-text); line-height: 1.3; }
+.login-logo { max-width: 220px; max-height: 90px; display: block; margin: 0 auto 10px; }
+
+.branch-switcher {
+  margin: 0 20px 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.branch-switcher select {
+  width: 100%;
+  background: #fff;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 8px;
+  font-size: 13px;
+}
+.branch-switcher.branch-label {
+  color: var(--sidebar-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.sidebar nav { display: flex; flex-direction: column; gap: 2px; padding: 0 10px; flex: 1; }
+.sidebar nav a {
+  color: var(--sidebar-text);
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+.sidebar nav a:hover { background: var(--primary-light); text-decoration: none; }
+.sidebar nav a.active { background: var(--sidebar-active); color: #fff; font-weight: 600; }
+.nav-badge {
+  display: inline-block;
+  min-width: 18px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: var(--brand-red, #d33);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.5;
+}
+.nav-group-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  padding: 14px 12px 4px;
+}
+
+.sidebar-footer { padding: 10px 20px; border-top: 1px solid var(--border); margin-top: 10px; }
+.sidebar-footer a { display: block; color: var(--sidebar-text); font-size: 13px; padding: 6px 0; }
+.user-chip { font-size: 13px; color: var(--text); padding: 6px 0; }
+.role-badge {
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  margin-left: 4px;
+}
+.logout-link { color: var(--danger) !important; }
+
+/* Mobile topbar + off-canvas sidebar drawer (staff OMS PWA on a phone).
+   Desktop: topbar/backdrop stay hidden, sidebar sits in its normal flex
+   column exactly as before. Narrow viewport (see the max-width:900px block
+   below): the sidebar becomes a fixed, off-screen drawer toggled by the
+   hamburger button in the topbar. */
+.mobile-topbar { display: none; }
+.sidebar-backdrop { display: none; }
+
+.content {
+  flex: 1;
+  padding: 28px 34px;
+  max-width: 1200px;
+}
+
+@media (max-width: 900px) {
+  .app-shell { flex-direction: column; }
+  .mobile-topbar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; background: var(--sidebar-bg); border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 1100;
+  }
+  .mobile-topbar-title { font-size: 16px; font-weight: 700; color: var(--text); }
+  .mobile-menu-btn {
+    display: flex; flex-direction: column; justify-content: center; gap: 4px;
+    width: 34px; height: 34px; background: none; border: 1px solid var(--border); border-radius: 8px;
+    cursor: pointer; padding: 0; flex-shrink: 0;
+  }
+  .mobile-menu-btn span { display: block; width: 18px; height: 2px; margin: 0 auto; background: var(--text); border-radius: 1px; }
+
+  .sidebar {
+    position: fixed; top: 0; left: 0; height: 100vh; z-index: 1300;
+    transform: translateX(-100%); transition: transform 0.22s ease;
+    box-shadow: 2px 0 16px rgba(0,0,0,0.18); overflow-y: auto;
+  }
+  .sidebar.mobile-open { transform: translateX(0); }
+
+  .sidebar-backdrop {
+    display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    z-index: 1200; opacity: 0; pointer-events: none; transition: opacity 0.22s ease;
+  }
+  .sidebar-backdrop.mobile-open { opacity: 1; pointer-events: auto; }
+
+  .content { padding: 18px 16px; max-width: 100%; }
+
+  /* Data tables (Frames/Orders/Customers/... lists) are wide by nature -
+     without this, a wide table forces the WHOLE page to scroll sideways on
+     a phone, dragging the sticky topbar/hamburger off-screen with it. Keep
+     the horizontal scroll contained to just the table itself instead. */
+  .table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.page-header h1 { margin: 0; font-size: 24px; }
+.page-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.btn {
+  display: inline-block;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.btn:hover { text-decoration: none; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-secondary { background: #e2e8f0; color: var(--text); }
+.btn-secondary:hover { background: #cbd5e1; }
+.btn-danger { background: #fee2e2; color: var(--danger); }
+.btn-danger:hover { background: #fecaca; }
+.btn-small { padding: 4px 10px; font-size: 12px; }
+.btn-block { width: 100%; }
+/* Filter-toolbar "download as PDF" button (e.g. Billing/Invoices report) -
+   a subtle red-tinted variant of .btn-secondary so it reads as an export
+   action rather than another filter/navigation button. */
+.btn-pdf-export { background: #fdeceb; color: var(--brand-red, #c0392b); }
+.btn-pdf-export:hover { background: #fbdad7; }
+
+.panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.panel h2 { margin-top: 0; font-size: 16px; }
+.panel-header-row { display: flex; justify-content: space-between; align-items: center; }
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 900px) {
+  .grid-2 { grid-template-columns: 1fr; }
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+@media (max-width: 900px) {
+  .stat-grid { grid-template-columns: repeat(2, 1fr); }
+}
+.stat-card {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+}
+.stat-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+.stat-value { font-size: 26px; font-weight: 700; margin-top: 6px; }
+.stat-card.warn .stat-value { color: var(--warn); }
+.stat-card.good .stat-value { color: var(--success); }
+
+.table { width: 100%; border-collapse: collapse; }
+.table th, .table td { padding: 10px 8px; text-align: left; border-bottom: 1px solid var(--border); font-size: 14px; }
+.table th { font-size: 12px; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
+.table.small th, .table.small td { padding: 6px 8px; font-size: 13px; }
+/* Sortable column headers (currently: Orders list) - the whole header cell
+   is a link so it's a bigger, easier click target, styled to still read as
+   a plain <th> label (inherits the uppercase/muted look) rather than a
+   typical blue underlined link. The arrow only shows on the active sort
+   column; `.active` bumps it to the normal text colour so it stands out
+   slightly from the other, inactive header links. */
+.table th a.sort-th-link {
+  display: inline-flex; align-items: center; gap: 4px;
+  color: inherit; text-decoration: none; cursor: pointer;
+}
+.table th a.sort-th-link:hover { color: var(--text); text-decoration: underline; }
+.table th a.sort-th-link.active { color: var(--text); }
+.table th a.sort-th-link .sort-arrow { font-size: 8px; color: var(--brand-red); }
+.clickable-row { cursor: pointer; }
+.clickable-row:hover { background: #f8fafc; }
+.row-low-stock { background: #fff7ed; }
+
+/* Qty/price inputs inside order & purchase-order item tables: without this,
+   narrow table columns squeeze the number-input spinner arrows against the
+   digits and the value can appear to "disappear" (especially 2-digit qty). */
+#items-table input[type=number], #po-items-table input[type=number] {
+  width: 100%;
+  min-width: 56px;
+  padding: 8px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+  text-align: center;
+  background: #fff;
+  color: var(--text);
+  -moz-appearance: textfield;
+}
+#items-table input[type=number]::-webkit-outer-spin-button,
+#items-table input[type=number]::-webkit-inner-spin-button,
+#po-items-table input[type=number]::-webkit-outer-spin-button,
+#po-items-table input[type=number]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: #e2e8f0;
+  color: #475569;
+}
+.badge.large { font-size: 14px; padding: 6px 14px; }
+.rx-badge-btn {
+  border: none; cursor: pointer; font-family: inherit;
+  background: #fde68a; color: #92400e; transition: background 0.15s;
+}
+.rx-badge-btn:hover { background: #fcd34d; }
+
+/* Inline "select supplier + unit cost + Save" on each Purchase Requests
+   row, under their own "Select Supplier"/"Cost" column headers - replaces
+   the old separate "Select Supplier" page so a PO can be generated without
+   leaving the list. The Save button and Cancel form sit in the last
+   column together, side by side. */
+.pr-supplier-select {
+  max-width: 140px; padding: 5px 6px; border: 1px solid var(--border); border-radius: 6px; font-size: 12.5px;
+}
+.pr-cost-input {
+  width: 72px; padding: 5px 6px; border: 1px solid var(--border); border-radius: 6px; font-size: 12.5px;
+}
+.pr-actions {
+  display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; white-space: nowrap;
+}
+.pr-actions form { display: inline-flex; margin: 0; }
+
+/* Purchase Requests / Purchase Orders status filters - single-line segmented
+   tab bar (e.g. Pending/Converted/Cancelled, or All Status/Ordered/Partially
+   Received/Received/Cancelled) replacing the old dropdown + separate Filter
+   button. Clicking a tab filters immediately. */
+.pr-status-tabs, .po-status-tabs {
+  display: inline-flex; align-items: center; gap: 4px; flex-wrap: nowrap;
+  background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 4px;
+}
+.pr-status-tabs a, .po-status-tabs a {
+  padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 600;
+  color: #64748b; text-transform: uppercase; letter-spacing: 0.02em; white-space: nowrap;
+}
+.pr-status-tabs a:hover, .po-status-tabs a:hover { color: var(--text); }
+.pr-status-tabs a.active, .po-status-tabs a.active { background: #0f172a; color: #fff; }
+
+/* Purchase Orders filter row - status tabs + the remaining Type dropdown
+   (which now auto-submits on change) sit side by side, no Filter button. */
+.page-filter-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.page-filter-row .search-bar { margin: 0; }
+.badge.status-order-placed { background: #dbeafe; color: #1e40af; }
+.badge.status-lens-fitting { background: #fef3c7; color: #92400e; }
+.badge.status-ready-for-pickup { background: #dcfce7; color: #166534; }
+.badge.status-delivered { background: #d1fae5; color: #065f46; }
+.badge.status-cancelled { background: #fee2e2; color: #991b1b; }
+.badge.status-low { background: #fee2e2; color: #991b1b; }
+.badge.status-paid { background: #d1fae5; color: #065f46; }
+.badge.status-partial { background: #fef3c7; color: #92400e; }
+.badge.status-due { background: #fee2e2; color: #991b1b; }
+.badge.status-ordered { background: #dbeafe; color: #1e40af; }
+.badge.status-partially-received { background: #fef3c7; color: #92400e; }
+.badge.status-received { background: #d1fae5; color: #065f46; }
+.badge.status-sent { background: #d1fae5; color: #065f46; }
+.badge.status-failed { background: #fee2e2; color: #991b1b; }
+.badge.status-skipped-not-configured { background: #e2e8f0; color: #475569; }
+.badge.status-online { background: #e0e7ff; color: #3730a3; }
+.badge.status-in-store { background: #e2e8f0; color: #475569; }
+.badge.status-pending { background: #fef3c7; color: #92400e; }
+
+.due-since { font-size: 13px; color: var(--text-muted); font-weight: 600; }
+.due-since.due-today { color: var(--warn); }
+.due-since.due-old { color: var(--danger); }
+
+.return-exchange-form { background: #f8fafc; padding: 14px; border-radius: 8px; }
+.return-exchange-form .form-actions { margin-top: 12px; }
+.exchange-fields { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
+
+.empty { color: var(--text-muted); font-style: italic; }
+.muted { color: var(--text-muted); font-size: 13px; }
+.sub-heading { font-size: 13px; margin: 14px 0 6px; color: var(--text-muted); }
+
+/* ---- Frame Attributes (taxonomy admin) ---- */
+.attr-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+.attr-tab {
+  padding: 8px 14px;
+  border-radius: 20px;
+  background: #f1f5f9;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.attr-tab:hover { background: #e2e8f0; }
+.attr-tab.active { background: var(--primary); color: #fff; }
+
+.attr-search-form { display: flex; gap: 8px; align-items: center; }
+.attr-search-form input[type="text"] { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
+
+.attr-add-form { display: flex; gap: 8px; margin: 16px 0; }
+.attr-add-form input[type="text"] { flex: 1; max-width: 320px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; }
+
+.attr-inline-edit-form { display: flex; gap: 6px; align-items: center; }
+.attr-inline-edit-form input[type="text"] { padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; width: 160px; }
+
+.attr-pagination { display: flex; gap: 6px; margin-top: 16px; flex-wrap: wrap; }
+.attr-page-link {
+  padding: 5px 11px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: var(--text);
+  font-size: 13px;
+  text-decoration: none;
+}
+.attr-page-link.active { background: var(--primary); color: #fff; }
+.attr-page-link:hover { background: #e2e8f0; }
+
+/* Shared pagination control (templates/_pagination.html) - every long
+   admin list page (Orders, Customers, Invoices, Frames, Lenses, Contact
+   Lenses, Purchase Orders, Purchase Requests, Reviews, Recent Visitors,
+   Notifications, ...) uses this same widget instead of dumping its whole
+   result set onto one page. Unlike .attr-pagination (which lists every
+   page number - fine for the small Attributes/Product Groups lists), this
+   only ever shows a small window of page numbers so it stays usable even
+   with hundreds of pages. */
+.pagination { display: flex; align-items: center; gap: 6px; margin-top: 16px; flex-wrap: wrap; }
+.page-link {
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid transparent;
+}
+.page-link:hover { background: #e2e8f0; }
+.page-link.active { background: var(--primary); color: #fff; }
+.page-link.page-nav.disabled { color: var(--text-muted); background: transparent; cursor: default; }
+.page-ellipsis { padding: 0 4px; color: var(--text-muted); font-size: 13px; }
+.pagination-summary { margin: 8px 0 0; font-size: 13px; }
+
+@media (max-width: 720px) {
+  .attr-add-form { flex-direction: column; }
+  .attr-add-form input[type="text"] { max-width: none; }
+  .attr-search-form { flex-wrap: wrap; }
+}
+
+.alert-list { list-style: none; padding: 0; margin: 0; }
+.alert-list li {
+  display: flex; justify-content: space-between;
+  padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 14px;
+}
+.alert-list li strong { color: var(--warn); }
+
+.search-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+.search-bar input, .search-bar select { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+.search-bar input[type=text] { flex: 1; min-width: 180px; max-width: 320px; }
+
+/* ---- Frames Inventory: instant Search & Filter toolbar ---- */
+.frames-search-toolbar { margin-bottom: 14px; }
+.frames-search-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.frames-search-input-wrap { position: relative; flex: 1; min-width: 240px; max-width: 380px; }
+.frames-search-input-wrap .frames-search-icon {
+  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+  font-size: 13px; color: var(--text-muted); pointer-events: none;
+}
+.frames-search-input-wrap input[type=text] {
+  width: 100%; padding: 8px 10px 8px 30px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px;
+}
+.frames-search-form select {
+  padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; background: #fff;
+}
+.frames-search-status { margin: 6px 0 0; }
+
+/* Frames Inventory table row actions - Edit/Barcode/Deactivate/Delete all
+   sit on one line as same-style pill buttons (Edit used to render as a
+   bare unstyled link, and Delete could wrap to its own line). */
+.frame-actions {
+  display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; white-space: nowrap;
+}
+.frame-actions form { display: inline-flex; margin: 0; }
+.date-filter-label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-muted); }
+.date-filter-label input[type=date] { padding: 7px 8px; }
+
+.form-panel { max-width: 720px; }
+.form-panel label { display: block; margin: 14px 0 6px; font-size: 13px; font-weight: 600; color: var(--text-muted); }
+.form-panel input[type=text], .form-panel input[type=password], .form-panel input[type=email],
+.form-panel input[type=number], .form-panel input[type=date], .form-panel select, .form-panel textarea {
+  width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-family: inherit;
+}
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-actions { margin-top: 20px; display: flex; gap: 10px; }
+
+/* Frame form: inline "quick add" widget beside each taxonomy dropdown
+   (Brand/Colour/Size/Material/Frame Shape/Frame Type/Gender/Category) - see
+   templates/inventory/frame_form.html's taxonomy_select macro. The row puts
+   the <select> and a small "+ Add" button side by side (overriding the
+   form-panel default of a full-width select); the reveal-on-click name
+   input sits directly below, collapsed by default. */
+.taxonomy-select-row { display: flex; gap: 8px; align-items: stretch; }
+.taxonomy-select-row select { width: auto; flex: 1 1 auto; min-width: 0; }
+.taxonomy-select-row .taxonomy-quick-add-btn { flex: 0 0 auto; white-space: nowrap; }
+.taxonomy-quick-add-inline {
+  display: flex; align-items: center; gap: 6px; margin-top: 6px; flex-wrap: wrap;
+}
+.taxonomy-quick-add-inline.hidden { display: none; }
+.taxonomy-quick-add-inline .taxonomy-quick-add-input {
+  flex: 1 1 160px; min-width: 120px; padding: 7px 10px; border: 1px solid var(--border);
+  border-radius: 8px; font-size: 13px; font-family: inherit;
+}
+.taxonomy-quick-add-error { font-size: 12px; color: #c0392b; }
+.inline-form { display: flex; gap: 8px; align-items: center; margin: 10px 0; }
+.inline-form select { padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; }
+
+.rx-grid {
+  display: grid;
+  grid-template-columns: 140px 1fr 1fr 1fr;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+}
+.rx-col-label, .rx-row-label { font-size: 12px; font-weight: 700; color: var(--text-muted); }
+.rx-grid input { padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; }
+
+.rx-mode-toggle { display: flex; gap: 16px; margin: 10px 0 16px; }
+.rx-mode-option { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--text); cursor: pointer; }
+.rx-mode-option input { margin: 0; }
+#new-rx-panel { background: #f8fafc; padding: 14px; border-radius: 8px; margin-bottom: 16px; }
+
+.permission-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; background: #f8fafc; padding: 12px 14px; border-radius: 8px; }
+.permission-option { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; color: var(--text); cursor: pointer; }
+.permission-option input { margin: 0; }
+.permission-badges { display: flex; flex-wrap: wrap; gap: 4px; max-width: 260px; }
+.permission-badge { background: var(--primary-light); color: var(--primary-dark); font-size: 10px; padding: 2px 6px; border-radius: 10px; }
+
+.checkbox-label { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; color: var(--text); cursor: pointer; margin-top: 8px; }
+.checkbox-label input { margin: 0; }
+.product-photo-preview { margin: 6px 0; }
+.product-photo-preview img { max-width: 140px; max-height: 140px; border-radius: 8px; border: 1px solid #e2e8f0; object-fit: cover; }
+
+/* ===== Homepage Banners admin ===== */
+.banner-table .banner-thumb { width: 90px; height: 50px; border-radius: 6px; overflow: hidden; background: #f8f6f6; }
+.banner-table .banner-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.banner-drag-handle { cursor: grab; color: var(--text-muted); font-size: 18px; text-align: center; width: 24px; }
+.banner-row.dragging { opacity: 0.4; }
+.banner-row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ===== Product gallery admin (Frame/Contact Lens form) ===== */
+.gallery-grid { display: flex; flex-wrap: wrap; gap: 12px; margin: 10px 0 16px; }
+.gallery-item {
+  position: relative; width: 110px; border: 2px solid var(--border); border-radius: 8px; overflow: hidden;
+  background: #f8f6f6; cursor: grab;
+}
+.gallery-item.is-primary { border-color: var(--brand-red); }
+.gallery-item.dragging { opacity: 0.4; }
+.gallery-item img { width: 100%; height: 90px; object-fit: cover; display: block; }
+.gallery-item-badge {
+  position: absolute; top: 4px; left: 4px; background: var(--brand-red); color: #fff; font-size: 10px;
+  font-weight: 700; padding: 2px 6px; border-radius: 10px;
+}
+.gallery-item-actions { display: flex; gap: 4px; padding: 5px; background: #fff; }
+.gallery-item-actions button {
+  flex: 1; font-size: 10px; padding: 4px 2px; border: 1px solid var(--border); border-radius: 5px;
+  background: #fff; cursor: pointer;
+}
+.gallery-item-actions button.gallery-delete-btn { color: var(--danger); }
+.gallery-upload-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+.modal-overlay.hidden { display: none; }
+.modal-box {
+  background: #fff; border-radius: var(--radius); padding: 24px; width: 100%; max-width: 480px;
+  max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+}
+.modal-box label { display: block; margin: 14px 0 6px; font-size: 13px; font-weight: 600; color: var(--text-muted); }
+.modal-box input, .modal-box select { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+
+/* Product Groups popup (Frames / Contact Lenses "Product Groups" button) -
+   a large modal whose body is just an <iframe> onto the existing
+   product_groups pages rendered with ?embed=1 (see
+   templates/_product_groups_modal.html). */
+.pg-modal-box {
+  background: #fff; border-radius: var(--radius); width: 100%; max-width: 1100px; height: 88vh;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.2); display: flex; flex-direction: column; overflow: hidden;
+}
+.pg-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 18px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.pg-modal-header h2 { margin: 0; font-size: 16px; }
+.pg-modal-close {
+  background: none; border: none; font-size: 20px; line-height: 1; cursor: pointer;
+  color: var(--text-muted); padding: 4px 8px; border-radius: 6px;
+}
+.pg-modal-close:hover { background: var(--primary-light); color: var(--text); }
+.pg-modal-box iframe { flex: 1; width: 100%; border: none; }
+
+.section-title { font-size: 16px; margin: 24px 0 10px; }
+.order-summary-row { text-align: right; margin: 4px 0; font-size: 14px; color: var(--text-muted); }
+.order-summary-row.order-cart-discount { color: var(--brand-red, #b00020); font-weight: 600; }
+.order-grand-total { font-size: 18px; font-weight: 700; text-align: right; margin: 14px 0; }
+
+.hidden { display: none; }
+.inline-reset { margin-top: 8px; }
+.inline-reset form { display: flex; gap: 6px; }
+.inline-reset input { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; }
+
+/* Flash messages */
+.flash-wrap { margin-bottom: 16px; }
+.flash-wrap.standalone { max-width: 400px; margin: 20px auto 0; }
+.flash { padding: 10px 16px; border-radius: 8px; margin-bottom: 8px; font-size: 14px; }
+.flash-success { background: #d1fae5; color: #065f46; }
+.flash-error { background: #fee2e2; color: #991b1b; }
+
+/* Login page */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #241414, #e11d2e);
+}
+.login-card {
+  background: #fff;
+  padding: 40px;
+  border-radius: 16px;
+  width: 340px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+}
+.login-brand { font-size: 20px; font-weight: 700; margin-bottom: 6px; display: flex; gap: 8px; align-items: center; justify-content: center; }
+.login-card h1 { font-size: 18px; margin: 0 0 20px; color: var(--text-muted); font-weight: 500; }
+.login-card label { display: block; margin: 12px 0 6px; font-size: 13px; font-weight: 600; color: var(--text-muted); }
+.login-card input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+.login-card button { margin-top: 20px; }
+.hint { font-size: 12px; color: var(--text-muted); margin-top: 16px; line-height: 1.5; }
+
+/* Invoice */
+.invoice-sheet { max-width: 800px; }
+.invoice-header { display: flex; justify-content: space-between; border-bottom: 2px solid var(--border); padding-bottom: 16px; margin-bottom: 16px; }
+.invoice-header h2 { margin: 0 0 4px; }
+.invoice-header p { margin: 2px 0; font-size: 13px; color: var(--text-muted); }
+.invoice-meta { text-align: right; font-size: 13px; }
+.invoice-bill-to { margin-bottom: 20px; }
+.invoice-bill-to h3 { font-size: 13px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
+.invoice-bill-to p { margin: 2px 0; }
+.invoice-totals { max-width: 320px; margin-left: auto; margin-top: 16px; }
+.invoice-totals div { display: flex; justify-content: space-between; padding: 4px 0; font-size: 14px; }
+.invoice-totals .grand { font-weight: 700; font-size: 17px; border-top: 2px solid var(--border); margin-top: 6px; padding-top: 8px; }
+.invoice-totals .status-line { margin-top: 10px; align-items: center; }
+.invoice-footer { text-align: center; margin-top: 30px; color: var(--text-muted); font-size: 13px; }
+
+.invoice-prescription { margin: 16px 0; padding: 12px 14px; background: #f8fafc; border-radius: 8px; border: 1px solid var(--border); }
+.invoice-prescription h3 { font-size: 13px; text-transform: uppercase; color: var(--text-muted); margin: 0 0 8px; }
+.invoice-prescription table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.invoice-prescription table th, .invoice-prescription table td { padding: 4px 8px; border: 1px solid var(--border); text-align: center; }
+.invoice-prescription .rx-extra { margin-top: 8px; font-size: 13px; color: var(--text-muted); }
+
+@media print {
+  .no-print, .sidebar { display: none !important; }
+  .content { padding: 0; max-width: 100%; }
+  body { background: #fff; }
+  .panel { border: none; padding: 0; }
+}
+
+/* ===================== Online Store (public storefront) ===================== */
+/* .store-shell is the full-bleed outer wrapper; every section inside it
+   (topbar / header / navbar / content / footer) owns its own full-width
+   background, and lays out its actual content inside a shared
+   `.store-container` so everything - including the homepage banner slider,
+   which lives inside .store-content > .store-container - lines up on
+   exactly the same left/right edges. */
+.store-shell { width: 100%; }
+/* Widened from 1360px per user feedback that the site looked "boxed in"
+   with blank margins on wide screens compared to reference sites (e.g.
+   rkumar.in) that use most of the available browser width. 1600px still
+   leaves *some* breathing room on very large/ultrawide monitors rather
+   than going fully edge-to-edge, but on any screen 1600px or narrower
+   (the vast majority of laptops/desktops) the container is just 100%
+   width minus padding - i.e. genuinely full-width, no side margins at all. */
+.store-container { max-width: 1600px; margin: 0 auto; padding: 0 28px; }
+
+.store-topbar { background: var(--primary-dark); color: rgba(255,255,255,0.85); font-size: 12.5px; }
+.store-topbar-inner {
+  min-height: 34px; display: flex; align-items: center;
+  justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-top: 6px; padding-bottom: 6px;
+}
+.store-topbar-msg { opacity: 0.92; }
+.store-topbar-nav { display: flex; align-items: center; gap: 20px; }
+.store-topbar-nav a { color: rgba(255,255,255,0.85); font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+.store-topbar-nav a:hover { color: #fff; text-decoration: none; }
+.store-topbar-phone { opacity: 0.92; }
+
+/* ----- sticky header+navbar unit ----- */
+.store-sticky-header { position: sticky; top: 0; z-index: 40; }
+.store-sticky-header.is-scrolled { box-shadow: 0 6px 20px rgba(20,14,14,0.12); }
+
+.store-header {
+  background: rgba(255,255,255,0.98); backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--border);
+}
+/* Restored original 3-column layout - logo pinned left, a flexible search
+   bar filling the middle, actions pinned right - per user feedback that
+   the icon-toggle-search / centered-logo redesign felt too sparse/empty. */
+.store-header-inner {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center;
+  gap: 24px; padding: 18px 28px; min-height: 78px; transition: padding 0.2s ease, min-height 0.2s ease;
+}
+.store-sticky-header.is-scrolled .store-header-inner { padding-top: 10px; padding-bottom: 10px; min-height: 58px; }
+
+.store-header-left { grid-column: 1; justify-self: start; display: flex; align-items: center; gap: 12px; }
+
+.store-hamburger {
+  display: none; align-items: center; justify-content: center; width: 38px; height: 38px;
+  border: none; background: transparent; color: var(--text); cursor: pointer; border-radius: 8px; padding: 0;
+}
+.store-hamburger:hover { background: var(--primary-light); }
+
+.store-brand {
+  display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 700; color: var(--text);
+  flex-shrink: 0;
+}
+.store-brand:hover { text-decoration: none; }
+.store-logo { height: 42px; width: auto; transition: height 0.2s ease; }
+.store-sticky-header.is-scrolled .store-logo { height: 34px; }
+.store-logo-fallback {
+  display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px;
+  border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--brand-red));
+  color: #fff; font-weight: 700; font-size: 18px;
+}
+
+.store-search-form {
+  width: 100%; max-width: 640px; margin: 0 auto; display: flex; align-items: stretch;
+  position: relative; border: 1.5px solid var(--border); border-radius: 26px; overflow: hidden;
+  background: var(--panel-bg); transition: border-color 0.15s, box-shadow 0.15s;
+}
+.store-search-form:focus-within { border-color: var(--brand-red); box-shadow: 0 0 0 4px rgba(211,32,39,0.08); }
+.store-search-icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
+.store-search-form input {
+  flex: 1; border: none; padding: 12px 18px 12px 44px; font-size: 14.5px; outline: none; background: transparent;
+  min-width: 0;
+}
+.store-search-form button {
+  border: none; background: var(--brand-red); color: #fff; padding: 0 20px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: background 0.15s;
+}
+.store-search-form button:hover { background: var(--primary); }
+
+/* Inline header search bar - sits in the middle grid column on tablet/desktop.
+   Hidden at mobile widths (below) in favor of the icon-toggle + slide-down
+   #storeMobileSearchBar, since there isn't room for logo + full bar + actions
+   on one row on a phone screen. */
+.store-header-search { grid-column: 2; }
+
+.store-search-toggle {
+  display: none; align-items: center; justify-content: center; width: 38px; height: 38px;
+  border: none; background: transparent; color: var(--text); cursor: pointer; border-radius: 8px; padding: 0;
+}
+.store-search-toggle:hover { background: var(--primary-light); }
+.store-mobile-search-bar { display: none; padding: 0 0 14px; }
+.store-mobile-search-bar.is-open { display: block; }
+.store-mobile-search-bar .store-search-form { max-width: none; margin: 0; }
+
+.store-header-actions { grid-column: 3; justify-self: end; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.store-action-link {
+  display: flex; align-items: center; gap: 7px; color: var(--text); font-weight: 600; font-size: 13.5px;
+  padding: 8px 12px; border-radius: 20px; transition: background 0.15s, color 0.15s;
+}
+.store-action-link:hover { background: var(--primary-light); color: var(--brand-red); text-decoration: none; }
+.store-action-link svg { flex-shrink: 0; }
+.store-action-greeting { background: var(--primary-light); }
+.store-action-register {
+  border: 1.5px solid var(--primary); color: var(--primary); padding: 7px 16px;
+}
+.store-action-register:hover { background: var(--primary); color: #fff; }
+.store-cart-link {
+  position: relative; display: flex; align-items: center; gap: 8px; background: var(--primary);
+  color: #fff !important; padding: 9px 18px; border-radius: 22px; font-weight: 700; font-size: 13.5px;
+  transition: background 0.15s, transform 0.15s;
+}
+.store-cart-link:hover { background: var(--brand-red); text-decoration: none; transform: translateY(-1px); }
+.store-cart-badge {
+  position: absolute; top: -6px; right: -6px; background: #fff; color: var(--brand-red); border-radius: 10px;
+  font-size: 11px; min-width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;
+  padding: 0 4px; font-weight: 700; border: 2px solid var(--primary);
+}
+/* Wishlist header link - same shape/badge as Cart but styled as a quieter
+   outline pill (Cart stays the visually-dominant filled action). */
+.store-wishlist-link {
+  position: relative; display: flex; align-items: center; gap: 8px; background: transparent;
+  color: var(--text) !important; padding: 7px 16px; border-radius: 22px; font-weight: 700; font-size: 13.5px;
+  border: 1.5px solid var(--border); transition: border-color 0.15s, color 0.15s;
+}
+.store-wishlist-link:hover { border-color: var(--brand-red); color: var(--brand-red) !important; text-decoration: none; }
+.store-wishlist-link .store-cart-badge { border-color: var(--brand-red); color: var(--brand-red); }
+
+/* ----- navigation bar (below main header) ----- */
+.store-navbar { background: var(--primary); }
+.store-navbar-inner { display: flex; align-items: center; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+.store-navbar-inner::-webkit-scrollbar { display: none; }
+.store-navbar-link {
+  color: rgba(255,255,255,0.82); font-weight: 600; font-size: 13.5px; white-space: nowrap;
+  padding: 12px 16px; display: inline-block; position: relative; transition: color 0.15s;
+}
+.store-navbar-link:hover { color: #fff; text-decoration: none; }
+.store-navbar-link.active { color: #fff; }
+.store-navbar-link.active::after {
+  content: ""; position: absolute; left: 16px; right: 16px; bottom: 6px; height: 2px;
+  background: var(--brand-red); border-radius: 2px;
+}
+
+/* "Visit Us" dropdown in the desktop navbar - a plain button (styled like
+   the other .store-navbar-link items) that reveals a floating panel of
+   branches; each branch name is its own toggle that reveals/hides that
+   branch's address, reusing the .store-accordion-icon "+/-" marker. */
+.store-navbar-dropdown { position: relative; }
+.store-navbar-dropdown-trigger {
+  background: none; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
+  font-family: inherit;
+}
+.store-navbar-dropdown-caret { transition: transform 0.15s ease; }
+.store-navbar-dropdown-trigger[aria-expanded="true"] .store-navbar-dropdown-caret { transform: rotate(180deg); }
+/* position: fixed (not absolute) and JS-computed top/left (see app.js) -
+   NOT relative to .store-navbar-dropdown. This dropdown lives inside
+   .store-sticky-header, and the homepage banner slider's sliding track has
+   a CSS transform on it (for the slide animation) which - per spec -
+   creates its own stacking context for the whole slider, causing it to
+   paint over an *absolutely* positioned descendant of the sticky header
+   despite the header's higher z-index. Fixed positioning with a very high
+   z-index sidesteps that ancestor-stacking-context interaction entirely. */
+.store-navbar-dropdown-panel {
+  position: fixed; min-width: 260px; max-width: 320px;
+  background: var(--panel-bg); color: var(--text); border-radius: var(--radius); border: 1px solid var(--border);
+  box-shadow: 0 14px 34px rgba(0,0,0,0.16); padding: 6px 0; z-index: 500;
+}
+.store-visit-us-item { border-bottom: 1px solid var(--border); }
+.store-visit-us-item:last-child { border-bottom: none; }
+.store-visit-us-name {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: none; border: none; padding: 11px 16px; font-weight: 700; font-size: 13.5px;
+  color: var(--text); cursor: pointer; text-align: left; font-family: inherit;
+}
+.store-visit-us-name:hover { background: var(--primary-light); }
+.store-visit-us-name .store-accordion-icon { color: var(--brand-red); font-weight: 700; }
+.store-visit-us-address { padding: 0 16px 12px; font-size: 12.5px; color: var(--text-muted); line-height: 1.5; }
+.store-visit-us-address p { margin: 0 0 4px; }
+.store-visit-us-address a { color: var(--brand-red); font-weight: 600; }
+.store-visit-us-noaddr { font-style: italic; }
+.store-visit-us-empty { padding: 12px 16px; font-size: 13px; color: var(--text-muted); margin: 0; }
+
+/* "Brands" navbar mega-menu - same fixed-position technique as the Visit Us
+   dropdown above (see the comment on .store-navbar-dropdown-panel), but
+   sized to the navbar's own width (set inline by app.js on open) instead
+   of a small fixed box, and its brand list flows into CSS columns so it
+   reads as an alphabetical grid like a typical big-retailer mega-menu. */
+.store-navbar-mega-panel {
+  position: fixed; background: var(--panel-bg); color: var(--text); border-radius: 0 0 var(--radius) var(--radius);
+  border: 1px solid var(--border); border-top: none; box-shadow: 0 20px 40px rgba(0,0,0,0.18);
+  z-index: 500; padding: 24px 28px; max-height: 70vh; overflow-y: auto;
+}
+.store-brands-mega-grid { column-count: 5; column-gap: 28px; }
+.store-brand-group { break-inside: avoid; margin-bottom: 18px; }
+.store-brand-letter { color: var(--brand-red); font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+.store-brand-link { display: block; font-size: 13px; color: var(--text-muted); padding: 3px 0; }
+.store-brand-link:hover { color: var(--brand-red); text-decoration: none; }
+@media (max-width: 1200px) { .store-brands-mega-grid { column-count: 3; } }
+
+/* ----- mobile nav drawer ----- */
+.store-mobile-drawer-backdrop {
+  position: fixed; inset: 0; background: rgba(20,14,14,0.5); z-index: 59; opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.store-mobile-drawer-backdrop.is-open { opacity: 1; }
+.store-mobile-drawer {
+  position: fixed; top: 0; bottom: 0; left: 0; width: min(320px, 84vw); background: var(--panel-bg);
+  z-index: 60; transform: translateX(-100%); transition: transform 0.25s ease; box-shadow: 4px 0 24px rgba(0,0,0,0.15);
+  display: flex; flex-direction: column; overflow-y: auto;
+}
+.store-mobile-drawer.is-open { transform: translateX(0); }
+.store-mobile-drawer-header {
+  display: flex; align-items: center; justify-content: space-between; padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.store-mobile-drawer-close {
+  border: none; background: transparent; color: var(--text); cursor: pointer; padding: 4px;
+  display: flex; align-items: center; justify-content: center; border-radius: 8px;
+}
+.store-mobile-drawer-close:hover { background: var(--primary-light); }
+.store-mobile-drawer-nav { display: flex; flex-direction: column; padding: 10px 0; }
+.store-mobile-drawer-nav a {
+  padding: 13px 22px; font-weight: 600; font-size: 15px; color: var(--text); border-left: 3px solid transparent;
+}
+.store-mobile-drawer-nav a:hover { background: var(--primary-light); text-decoration: none; }
+.store-mobile-drawer-nav a.active { border-left-color: var(--brand-red); color: var(--brand-red); background: var(--primary-light); }
+.store-mobile-drawer-visitus { border-top: 1px solid var(--border); padding: 6px 0; }
+.store-mobile-drawer-visitus-title {
+  padding: 10px 22px 4px; font-size: 11.5px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.4px;
+}
+.store-mobile-drawer-visitus .store-visit-us-name { padding: 11px 22px; }
+.store-mobile-drawer-visitus .store-visit-us-address { padding: 0 22px 12px; }
+.store-mobile-brands-toggle {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  border: none; background: none; cursor: pointer; font-family: inherit; text-align: left;
+}
+.store-mobile-brands-toggle .store-accordion-icon { color: var(--brand-red); font-weight: 700; }
+.store-mobile-brands-list { max-height: 260px; overflow-y: auto; padding: 4px 22px 12px; }
+.store-mobile-brands-list .store-brand-link { padding: 6px 0; }
+.store-mobile-drawer-account {
+  margin-top: auto; padding: 18px 22px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px;
+}
+
+.store-search-results-bar {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+  background: var(--primary-light); border-radius: 12px; padding: 14px 20px; margin: 20px 0; font-size: 15px;
+}
+.store-clear-search { font-weight: 700; color: var(--brand-red); }
+
+.store-content { padding: 24px 0 48px; }
+
+.store-hero {
+  text-align: center; padding: 40px 24px; margin: 20px 0 0; border-radius: 18px;
+  background: linear-gradient(135deg, var(--primary) 0%, #3a2c2c 55%, var(--brand-red) 130%);
+  color: #fff; box-shadow: 0 10px 30px rgba(32,26,26,0.18);
+}
+.store-hero h1 { margin: 0 0 8px; font-size: 32px; letter-spacing: 0.3px; }
+.store-hero p { color: rgba(255,255,255,0.85); margin: 0; font-size: 15px; }
+.store-hero-cta {
+  display: inline-block; margin-top: 18px; background: #fff; color: var(--primary) !important;
+  font-weight: 700; padding: 10px 24px; border-radius: 22px; font-size: 14px; transition: transform 0.15s;
+}
+.store-hero-cta:hover { text-decoration: none; transform: translateY(-2px); }
+
+/* ===== Hero banner - single fallback image (no homepage_banners rows configured) =====
+   Sized/positioned identically to the slider below it so the hero looks the
+   same premium way regardless of which of the two banner mechanisms is
+   currently active for this shop. */
+.store-banner {
+  display: block; max-width: 1600px; margin: 20px auto 0; border-radius: 20px; overflow: hidden;
+  box-shadow: 0 16px 40px rgba(32,26,26,0.16); line-height: 0; position: relative;
+}
+.store-banner img {
+  width: 100%; height: 530px; object-fit: cover; object-position: center center; display: block;
+  transition: transform 0.35s ease;
+}
+.store-banner:hover img { transform: scale(1.02); }
+@media (max-width: 1023px) {
+  .store-banner img { height: 400px; }
+}
+@media (max-width: 767px) {
+  .store-banner { border-radius: 16px; margin-top: 14px; }
+  .store-banner img { height: 260px; }
+}
+
+/* ===== Homepage banner slider (self-contained, no external library -
+   avoids depending on any CDN being reachable from the visitor's browser).
+   Full-width up to a 1600px cap and centred (matches .store-container's
+   width so the banner fills the same space as the header/navbar/footer
+   instead of leaving empty gutters on either side), tall premium hero
+   heights per breakpoint (desktop 530px / tablet 400px / mobile 260px),
+   rounded 20px corners and a soft shadow. Every slide image is forced to
+   that exact box via object-fit: cover + object-position: center center,
+   so images of any source aspect ratio fill the banner without stretching -
+   only ever center-cropped, never distorted - and the focal subject
+   (face/product, assumed centered per the admin's upload) stays in frame
+   at every size. ===== */
+.store-banner-slider {
+  max-width: 1600px; margin: 20px auto 0; border-radius: 20px; overflow: hidden;
+  box-shadow: 0 16px 40px rgba(32,26,26,0.16);
+  position: relative;
+}
+.store-banner-track {
+  display: flex; will-change: transform;
+}
+.store-banner-slide {
+  position: relative; flex: 0 0 100%; width: 100%; min-width: 0;
+}
+.store-banner-slider picture {
+  display: block; width: 100%; height: 100%;
+}
+.store-banner-slider picture, .store-banner-slider img {
+  width: 100%; height: 530px; object-fit: cover; object-position: center center; display: block;
+}
+@media (max-width: 1023px) {
+  .store-banner-slider picture, .store-banner-slider img { height: 400px; }
+}
+@media (max-width: 767px) {
+  .store-banner-slider { border-radius: 16px; margin-top: 14px; }
+  .store-banner-slider picture, .store-banner-slider img { height: 260px; }
+}
+.store-banner-slide-content {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; text-align: center; padding: 24px; color: #fff;
+}
+.store-banner-slide-content.has-overlay { background: linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.55) 100%); }
+.store-banner-slide-content h1 { margin: 0 0 8px; font-size: 34px; letter-spacing: 0.3px; text-shadow: 0 2px 8px rgba(0,0,0,0.25); }
+.store-banner-slide-content p { margin: 0; font-size: 15px; text-shadow: 0 1px 6px rgba(0,0,0,0.25); }
+@media (max-width: 767px) {
+  .store-banner-slide-content h1 { font-size: 21px; }
+  /* Extra horizontal room so centered text doesn't sit under the prev/next
+     arrow buttons (32px wide, inset 10px from each edge at this width). */
+  .store-banner-slide-content { padding: 16px 46px; }
+}
+.store-banner-slider .store-hero-cta { position: relative; z-index: 1; }
+.store-banner-arrow {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
+  width: 42px; height: 42px; border-radius: 50%; border: none; cursor: pointer;
+  color: #fff; background: rgba(0,0,0,0.32); font-size: 15px; display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.store-banner-arrow:hover { background: rgba(0,0,0,0.55); }
+.store-banner-prev { left: 18px; }
+.store-banner-next { right: 18px; }
+.store-banner-dots {
+  position: absolute; left: 0; right: 0; bottom: 16px; z-index: 2;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.store-banner-dot {
+  width: 9px; height: 9px; border-radius: 50%; border: none; padding: 0; cursor: pointer;
+  background: rgba(255,255,255,0.6); transition: background 0.15s, transform 0.15s;
+}
+.store-banner-dot:hover { background: rgba(255,255,255,0.85); }
+.store-banner-dot.active { background: var(--brand-red); transform: scale(1.15); }
+@media (max-width: 767px) {
+  .store-banner-arrow { width: 32px; height: 32px; font-size: 13px; }
+  .store-banner-prev { left: 10px; }
+  .store-banner-next { right: 10px; }
+}
+
+/* Compensates for the sticky header+navbar when a link (e.g. a banner CTA,
+   or the Brands/Offers nav items) jumps straight to #store-catalog, so the
+   product grid doesn't land hidden underneath it. The old Eyeglasses/
+   Sunglasses/Contact Lenses category-tabs row that used to live at this
+   anchor has been removed (redundant with the top navbar's own category
+   links); #store-catalog is now a zero-height anchor just above the grid. */
+#store-catalog { scroll-margin-top: 132px; }
+
+/* ----- Shop by Gender navigation -----
+   Sits between the hero banner and the product grid on the homepage (and
+   search results) - the Eyeglasses/Sunglasses/Contact Lenses category tabs
+   that used to sit below this have been removed as redundant with the top
+   navbar's own category links. Four cards linking to store.home with a
+   `gender` query param; the active one gets the brand-red treatment. Kept
+   deliberately compact (small padding/icons/type) rather than the larger
+   "hero tile" look this section had originally. On narrow screens this
+   becomes a horizontal swipeable pill row instead of a grid - see the
+   media query below. */
+.store-gender-nav {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+  margin: 16px 0 8px;
+}
+.store-gender-card {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 12px 10px; background: var(--panel-bg); border: 1px solid var(--border);
+  border-radius: 12px; box-shadow: 0 2px 8px rgba(20,14,14,0.05);
+  text-decoration: none; color: var(--text); transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+.store-gender-card:hover { transform: translateY(-4px); box-shadow: 0 10px 24px rgba(20,14,14,0.12); border-color: var(--brand-red); text-decoration: none; }
+/* Icon sits in a small tinted circular badge rather than a bare oversized
+   emoji - a distinct pastel tint per gender (grey/blue/rose/amber) so the
+   card reads as "attractive/colourful" even before the red active state
+   kicks in, and the emoji itself stays modest in size. */
+.store-gender-icon-badge {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.05);
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+.store-gender-card:hover .store-gender-icon-badge { transform: scale(1.08); }
+.store-gender-card-all .store-gender-icon-badge { background: #e9ecef; }
+.store-gender-card-men .store-gender-icon-badge { background: #dbeafe; }
+.store-gender-card-women .store-gender-icon-badge { background: #fde2e7; }
+.store-gender-card-kids .store-gender-icon-badge { background: #fef3c7; }
+/* Icons are inline outline SVGs (stroke: currentColor) rather than emoji -
+   a deliberately minimal, monochrome line-icon treatment (glasses / person
+   silhouettes) for a cleaner, more "professional storefront" look than
+   platform emoji, which render inconsistently across devices anyway. Each
+   gender tints its own icon colour to match its badge; the active (red)
+   state overrides all of them to white so the icon stays legible. */
+.store-gender-icon { line-height: 1; display: flex; }
+.store-gender-icon svg { display: block; }
+.store-gender-card-all .store-gender-icon { color: #495057; }
+.store-gender-card-men .store-gender-icon { color: #2563eb; }
+.store-gender-card-women .store-gender-icon { color: #db2777; }
+.store-gender-card-kids .store-gender-icon { color: #b45309; }
+.store-gender-name { font-weight: 700; font-size: 13.5px; }
+.store-gender-tagline { font-size: 11px; color: var(--text-muted); }
+.store-gender-card.active { background: var(--brand-red); color: #fff; border-color: var(--brand-red); }
+.store-gender-card.active .store-gender-icon-badge { background: rgba(255,255,255,0.28); }
+.store-gender-card.active .store-gender-icon { color: #fff; }
+.store-gender-card.active .store-gender-tagline { color: rgba(255,255,255,0.85); }
+
+/* Dims + disables pointer events while an AJAX filter fetch is in flight,
+   so a fast double-click can't fire two overlapping requests and the
+   visitor gets a visual "it's working" cue instead of a static page. */
+.store-region-loading { opacity: 0.5; pointer-events: none; transition: opacity 0.15s ease; }
+
+@media (max-width: 640px) {
+  .store-gender-nav {
+    display: flex; overflow-x: auto; gap: 10px; padding: 2px 2px 8px;
+    scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
+  }
+  .store-gender-card {
+    flex: 0 0 auto; min-width: 112px; flex-direction: row; justify-content: center;
+    padding: 9px 14px; scroll-snap-align: start;
+  }
+  .store-gender-icon-badge { width: 26px; height: 26px; }
+  .store-gender-icon svg { width: 15px; height: 15px; }
+  .store-gender-name { font-size: 13px; }
+  .store-gender-tagline { display: none; }
+}
+
+/* ----- Side Posters (Website Management > Side Posters) -----
+   Two admin-editable promo images that float in the empty left/right
+   margins beside `.store-container` (max-width 1600px) once the viewport
+   is wide enough to actually leave room for them. Positioned with
+   `position: fixed` (not relative to the container in the DOM) so they
+   don't need a positioned ancestor and stay put mid-viewport while the
+   page scrolls, like a typical sticky side-ad slot; vertically centered so
+   they roughly land alongside the category tabs / product grid area
+   regardless of exact page height. Hidden entirely below the width
+   breakpoint (laptop/tablet/mobile) where the gutter is too narrow (or
+   nonexistent) to hold them without overlapping real content. */
+.store-side-poster {
+  display: none;
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 170px;
+  height: 480px;
+  z-index: 8;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 28px rgba(20,14,14,0.14);
+  background: var(--panel-bg);
+}
+.store-side-poster a, .store-side-poster img { display: block; width: 100%; height: 100%; }
+.store-side-poster img { object-fit: cover; object-position: center top; border-radius: 16px; }
+/* Recomputed for the wider (1600px, was 1360px) .store-container - these
+   still need to sit just outside the container's edge, so the offset from
+   center grew by the same 120px (half of the +240px container growth) to
+   stay clear of it: 898 -> 1018. Min-width bumped 1800 -> 2040 to match
+   (container(1600) + padding + poster(170) + gap*2, roughly), since a
+   narrower-than-that viewport no longer has a gutter wide enough to hold
+   the poster without overlapping real content. */
+.store-side-poster-left { left: calc(50% - 1018px); }
+.store-side-poster-right { right: calc(50% - 1018px); }
+
+@media (min-width: 2040px) {
+  .store-side-poster { display: block; }
+}
+
+.store-section-title { font-size: 19px; margin: 34px 0 16px; font-weight: 700; }
+
+.store-empty { text-align: center; color: var(--text-muted); padding: 50px 0; font-size: 15px; }
+
+/* Shop page filter sidebar (Phase B) - sits beside the product grid on
+   desktop, collapses behind a "Filters & Sort" toggle button on mobile.
+   #store-product-grid-region keeps its original standalone styling (it
+   used to be the sole child of the page at this point); .store-shop-layout
+   is just a flex wrapper added around it + the new sidebar. */
+.store-shop-layout { display: flex; gap: 26px; align-items: flex-start; }
+.store-shop-layout > #store-product-grid-region { flex: 1; min-width: 0; }
+.store-filter-sidebar {
+  flex: 0 0 230px; position: sticky; top: 16px;
+  background: var(--panel-bg); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px;
+}
+.store-filter-sidebar-hidden { display: none; }
+.store-filter-toggle-btn { display: none; }
+.store-filter-group { margin-bottom: 20px; }
+.store-filter-group:last-child { margin-bottom: 0; }
+.store-filter-group-label { font-weight: 700; font-size: 13px; margin-bottom: 8px; display: block; }
+.store-filter-select {
+  width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--bg); color: var(--text); font-size: 13px;
+}
+.store-filter-price-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.store-filter-price-row input {
+  width: 0; flex: 1; padding: 7px 8px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--bg); color: var(--text); font-size: 13px;
+}
+.store-filter-checklist { display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; }
+.store-filter-checkbox-label { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+.store-filter-checkbox-label input { flex: 0 0 auto; }
+.store-filter-clear-link { display: inline-block; margin-top: 12px; font-size: 13px; color: var(--brand-red); font-weight: 600; }
+
+@media (max-width: 900px) {
+  .store-shop-layout { flex-direction: column; gap: 12px; }
+  .store-filter-sidebar { flex: none; width: 100%; position: static; padding: 0; border: none; background: none; }
+  .store-filter-toggle-btn {
+    display: block; width: 100%; text-align: left; padding: 11px 14px; background: var(--panel-bg);
+    border: 1px solid var(--border); border-radius: var(--radius); font-weight: 700; font-size: 14px; cursor: pointer;
+  }
+  .store-filter-panel {
+    display: none; margin-top: 10px; padding: 16px; background: var(--panel-bg);
+    border: 1px solid var(--border); border-radius: var(--radius);
+  }
+  .store-filter-panel.open { display: block; }
+}
+
+.store-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 20px; }
+.store-card {
+  background: var(--panel-bg); border: 1px solid var(--border); border-radius: var(--radius);
+  overflow: hidden; color: var(--text); display: flex; flex-direction: column;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.store-card:hover { box-shadow: 0 10px 24px rgba(0,0,0,0.1); transform: translateY(-3px); }
+.store-card-link { color: var(--text); display: flex; flex-direction: column; flex: 1; }
+.store-card-link:hover { text-decoration: none; }
+.store-card-img {
+  aspect-ratio: 1 / 1; background: #f8f6f6; display: flex; align-items: center; justify-content: center;
+  overflow: hidden; padding: 10px; position: relative;
+}
+.store-card-img img { width: 100%; height: 100%; object-fit: contain; }
+/* Product Card Gallery: every image for the item is in the DOM (not just
+   the featured one); when there's more than one (has-hover-img - kept as
+   the marker class name for continuity) they're stacked absolutely and
+   toggled with .active, matching the single-product page's gallery
+   pattern. A single-image card never gets has-hover-img, so its one
+   .store-card-gallery-img just renders in-flow like a plain <img> - no
+   stacking/opacity logic applies, exactly as before this feature. */
+.store-card-gallery-img { width: 100%; height: 100%; object-fit: contain; }
+.store-card-img.has-hover-img .store-card-gallery-img {
+  position: absolute; inset: 0; padding: 10px; opacity: 0; transition: opacity 0.2s ease; pointer-events: none;
+}
+.store-card-img.has-hover-img .store-card-gallery-img.active { opacity: 1; }
+.store-card-noimg { font-size: 40px; opacity: 0.3; }
+.store-card-noimg-big { font-size: 80px; }
+/* Thumbnail strip below the main image - only rendered (card_thumbs macro)
+   when a card has more than one image. Deliberately sits OUTSIDE the
+   <a class="store-card-link"> (same reasoning as the color-swatches row
+   below it) since thumbnails are clickable buttons, and a <button> nested
+   inside an <a> is invalid HTML / breaks click targeting. */
+.store-card-thumbs { display: flex; flex-wrap: wrap; gap: 5px; padding: 8px 12px 0; }
+.store-card-thumb {
+  width: 30px; height: 30px; border-radius: 6px; flex: 0 0 auto; padding: 0;
+  background-color: #f8f6f6; background-size: contain; background-position: center; background-repeat: no-repeat;
+  border: 2px solid transparent; box-shadow: 0 0 0 1px var(--border); cursor: pointer;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.store-card-thumb:hover { transform: scale(1.08); }
+.store-card-thumb.active { border-color: var(--brand-red); box-shadow: 0 0 0 1px var(--brand-red); }
+.store-card-thumb-more {
+  width: 30px; height: 30px; border-radius: 6px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center;
+  background: var(--panel-bg); box-shadow: 0 0 0 1px var(--border); font-size: 11px; font-weight: 700; color: var(--text-muted);
+}
+.store-card-body { padding: 13px 15px; border-top: 1px solid var(--border); flex: 1; }
+.store-card-title { font-weight: 700; font-size: 14px; }
+.store-card-details { margin: 6px 0 8px; display: flex; flex-direction: column; gap: 2px; }
+.store-card-detail { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+.store-card-detail-label { font-weight: 600; color: var(--text); }
+.store-card-price { font-weight: 700; color: var(--brand-red); font-size: 15px; }
+/* Color swatches for a grouped product (Product Groups admin feature) - a
+   small row of clickable color dots/thumbnails between the price and the
+   Add to Cart button, one per visible color variant. */
+.store-card-swatches { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 10px; }
+.store-card-swatch {
+  width: 22px; height: 22px; border-radius: 50%; overflow: hidden;
+  border: 2px solid transparent; box-shadow: 0 0 0 1px var(--border);
+  display: block; flex: 0 0 auto; transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.store-card-swatch:hover { transform: scale(1.12); }
+.store-card-swatch.active { box-shadow: 0 0 0 2px var(--brand-red); }
+.store-card-swatch img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.store-card-swatch-dot { width: 100%; height: 100%; display: block; background: var(--panel-bg); }
+.store-card-add-form { border-top: 1px solid var(--border); }
+.store-card-add-btn {
+  width: 100%; border: none; background: var(--primary); color: #fff; font-weight: 700;
+  font-size: 13px; padding: 11px 0; cursor: pointer; transition: background 0.15s;
+}
+.store-card-add-btn:hover { background: var(--brand-red); }
+/* Shop-grid Quick View button (task #129) - sits next to Add to Cart in a
+   row, so the form loses its own top border (the row wrapper draws it
+   instead) and its button no longer needs to be full-width. */
+.store-card-actions-row { display: flex; border-top: 1px solid var(--border); }
+.store-card-actions-row .store-card-add-form { flex: 1; border-top: none; }
+.store-card-quickview-btn {
+  flex: 0 0 auto; width: 46px; border: none; border-left: 1px solid var(--border);
+  background: var(--panel-bg); color: var(--text); font-size: 16px; cursor: pointer; transition: background 0.15s;
+}
+.store-card-quickview-btn:hover { background: var(--primary-light); }
+/* Wishlist heart button - same slot/sizing as Quick View, sits right after
+   it in .store-card-actions-row. Outline heart by default; .active (item
+   already saved) fills it in brand red so saved state reads at a glance. */
+.store-card-wishlist-btn {
+  flex: 0 0 auto; width: 46px; border: none; border-left: 1px solid var(--border);
+  background: var(--panel-bg); color: var(--text); font-size: 17px; cursor: pointer; transition: background 0.15s, color 0.15s;
+}
+.store-card-wishlist-btn:hover { background: var(--primary-light); }
+.store-card-wishlist-btn.active { color: var(--brand-red); }
+
+/* Homepage product sliders (Best Sellers / New Arrivals / Featured) and the
+   Shop by Brand strip - horizontally-scrollable rows using the same
+   scroll-snap pattern as the category tabs above, so they work with a plain
+   swipe on mobile without any JS carousel library. Cards reuse a slimmed
+   down .store-card look (no gallery/swatches - just image, title, price,
+   Add to Cart) since these are compact promo rows, not the full catalog
+   grid. */
+.store-slider-section { margin: 34px 0; }
+.store-slider {
+  display: flex; gap: 16px; overflow-x: auto; padding: 4px 2px 12px;
+  scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
+}
+.store-slider-card {
+  flex: 0 0 190px; scroll-snap-align: start; background: var(--panel-bg);
+  border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
+  display: flex; flex-direction: column; transition: box-shadow 0.2s, transform 0.2s;
+}
+.store-slider-card:hover { box-shadow: 0 10px 24px rgba(0,0,0,0.1); transform: translateY(-3px); }
+.store-slider-empty { color: var(--text-muted); font-size: 13px; }
+
+.store-services-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+.store-service-card {
+  background: var(--panel-bg); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 20px 14px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.store-service-icon { font-size: 30px; }
+.store-service-title { font-weight: 700; font-size: 14px; }
+.store-service-desc { font-size: 12px; color: var(--text-muted); }
+.store-trust-strip-admin { margin-top: 0; }
+
+.store-promo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; }
+.store-promo-card {
+  background: var(--panel-bg); border: 1px solid var(--border); border-radius: var(--radius);
+  overflow: hidden; display: flex; flex-direction: column;
+}
+.store-promo-card img { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; }
+.store-promo-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.store-promo-title { font-weight: 700; font-size: 15px; }
+.store-promo-desc { font-size: 13px; color: var(--text-muted); }
+
+.store-brand-strip {
+  display: flex; gap: 18px; overflow-x: auto; padding: 4px 2px 12px;
+  scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
+}
+.store-brand-logo-card {
+  flex: 0 0 130px; scroll-snap-align: start; background: var(--panel-bg);
+  border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 10px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center;
+  color: var(--text); transition: box-shadow 0.2s, transform 0.2s;
+}
+.store-brand-logo-card:hover { box-shadow: 0 10px 24px rgba(0,0,0,0.1); transform: translateY(-3px); color: var(--text); text-decoration: none; }
+.store-brand-logo-img { width: 100%; height: 60px; object-fit: contain; }
+.store-brand-logo-fallback { width: 100%; height: 60px; display: flex; align-items: center; justify-content: center; font-size: 26px; opacity: 0.4; }
+.store-brand-logo-name { font-size: 12px; font-weight: 600; }
+
+.store-trust-strip {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 46px 0 10px;
+  padding: 26px 10px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+}
+.store-trust-item { display: flex; align-items: center; gap: 12px; justify-content: center; }
+.store-trust-icon { font-size: 26px; }
+.store-trust-value { font-weight: 700; font-size: 15px; }
+.store-trust-label { font-size: 12px; color: var(--text-muted); }
+
+.store-back-link { display: inline-block; margin-bottom: 14px; font-weight: 600; }
+.store-back-link:hover { color: var(--brand-red); }
+
+.store-product-detail { display: grid; grid-template-columns: 1fr 1fr; gap: 34px; }
+.store-product-img {
+  background: #f8f6f6; border-radius: var(--radius); display: flex; align-items: center;
+  justify-content: center; aspect-ratio: 1/1; overflow: hidden; padding: 24px;
+  border: 1px solid var(--border);
+}
+.store-product-img img { width: 100%; height: 100%; object-fit: contain; }
+
+.store-gallery { display: flex; flex-direction: column; gap: 12px; }
+.store-gallery-main {
+  position: relative; background: #f8f6f6; border-radius: var(--radius); overflow: hidden;
+  aspect-ratio: 1/1; border: 1px solid var(--border);
+}
+.store-gallery-main-img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; padding: 24px;
+  opacity: 0; transition: opacity 0.25s; pointer-events: none; cursor: zoom-in;
+}
+.store-gallery-main-img.active { opacity: 1; pointer-events: auto; }
+.store-gallery-arrow {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
+  width: 36px; height: 36px; border-radius: 50%; border: none; background: rgba(255,255,255,0.9);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15); font-size: 15px; cursor: pointer; display: flex;
+  align-items: center; justify-content: center; color: var(--text); transition: background 0.15s;
+}
+.store-gallery-arrow:hover { background: #fff; color: var(--brand-red); }
+.store-gallery-prev { left: 10px; }
+.store-gallery-next { right: 10px; }
+.store-gallery-zoom-hint {
+  position: absolute; bottom: 10px; right: 10px; z-index: 2; width: 34px; height: 34px;
+  border-radius: 50%; border: none; background: rgba(255,255,255,0.9); box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.store-gallery-zoom-hint:hover { background: #fff; }
+.store-gallery-thumbs {
+  display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px;
+}
+.store-gallery-thumb {
+  width: 62px; height: 62px; flex: 0 0 auto; object-fit: contain; background: #f8f6f6;
+  border: 2px solid var(--border); border-radius: 8px; padding: 4px; cursor: pointer; transition: border-color 0.15s;
+}
+.store-gallery-thumb.active, .store-gallery-thumb:hover { border-color: var(--brand-red); }
+
+.store-lightbox {
+  position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.92);
+  display: flex; align-items: center; justify-content: center; touch-action: none;
+}
+.store-lightbox[hidden] { display: none; }
+.store-lightbox-stage { position: relative; width: 100%; height: 100%; overflow: hidden; }
+.store-lightbox-img {
+  position: absolute; top: 50%; left: 50%; max-width: 90vw; max-height: 90vh;
+  transform: translate(-50%, -50%); opacity: 0; transition: opacity 0.2s; user-select: none;
+  -webkit-user-drag: none; touch-action: none;
+}
+.store-lightbox-img.active { opacity: 1; }
+.store-lightbox-close {
+  position: absolute; top: 16px; right: 20px; z-index: 5; width: 40px; height: 40px; border-radius: 50%;
+  border: none; background: rgba(255,255,255,0.15); color: #fff; font-size: 20px; cursor: pointer;
+}
+.store-lightbox-close:hover { background: rgba(255,255,255,0.3); }
+.store-lightbox-arrow {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 5; width: 44px; height: 44px;
+  border-radius: 50%; border: none; background: rgba(255,255,255,0.15); color: #fff; font-size: 18px; cursor: pointer;
+}
+.store-lightbox-arrow:hover { background: rgba(255,255,255,0.3); }
+.store-lightbox-prev { left: 16px; }
+.store-lightbox-next { right: 16px; }
+.store-lightbox-counter {
+  position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 5;
+  color: #fff; font-size: 13px; opacity: 0.8;
+}
+@media (max-width: 767px) {
+  .store-lightbox-arrow { display: none; }
+}
+
+.store-product-info h1 { margin: 0 0 10px; font-size: 25px; }
+
+.store-detail-list { margin-bottom: 14px; }
+.store-detail-row { font-size: 14px; color: var(--text); line-height: 1.8; }
+.store-detail-label { font-weight: 600; color: var(--text); }
+.store-detail-row-emphasis { font-size: 20px; font-weight: 700; color: var(--brand-red); margin-top: 6px; }
+.store-detail-row-emphasis .store-detail-label { color: var(--brand-red); font-size: 14px; font-weight: 600; }
+.store-detail-description { margin-bottom: 14px; line-height: 1.5; }
+.store-product-stock { font-size: 14px; margin-bottom: 16px; }
+/* Color swatches on the product detail page (Product Groups) - links to
+   sibling color variants of the same grouped product. */
+.store-variant-swatches-row { display: flex; align-items: flex-start; gap: 10px; margin: 4px 0 10px; }
+.store-variant-swatches { display: flex; flex-wrap: wrap; gap: 10px; }
+.store-variant-swatch {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: var(--text-muted);
+}
+.store-variant-swatch img, .store-variant-swatch .store-card-swatch-dot {
+  width: 40px; height: 40px; border-radius: 10px; object-fit: cover; display: block;
+  border: 2px solid transparent; box-shadow: 0 0 0 1px var(--border); background: var(--panel-bg);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.store-variant-swatch:hover img, .store-variant-swatch:hover .store-card-swatch-dot { transform: scale(1.06); }
+.store-variant-swatch.active img, .store-variant-swatch.active .store-card-swatch-dot { box-shadow: 0 0 0 2px var(--brand-red); }
+.store-variant-swatch-label { font-size: 11px; max-width: 52px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.store-variant-swatch.active .store-variant-swatch-label { color: var(--brand-red); font-weight: 600; }
+.store-add-form { display: flex; flex-direction: column; gap: 10px; max-width: 480px; }
+.store-add-form input[type="number"] { width: 70px; }
+
+/* Qty stepper + "Add to Cart" on one row, full-width red "Buy It Now"
+   below - matches the two-tier buy box pattern used by most storefronts. */
+.store-buy-row { display: flex; align-items: stretch; gap: 10px; }
+.store-qty-stepper {
+  display: flex; align-items: center; border: 1.5px solid var(--border); border-radius: 8px;
+  overflow: hidden; flex-shrink: 0;
+}
+.store-qty-btn {
+  border: none; background: var(--panel-bg); color: var(--text); width: 38px; cursor: pointer;
+  font-size: 16px; line-height: 1; display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.store-qty-btn:hover { background: var(--primary-light); }
+.store-qty-stepper .store-qty-input {
+  width: 46px; border: none; border-left: 1.5px solid var(--border); border-right: 1.5px solid var(--border);
+  text-align: center; -moz-appearance: textfield; padding: 8px 4px; font-size: 14.5px;
+}
+.store-qty-stepper .store-qty-input::-webkit-outer-spin-button,
+.store-qty-stepper .store-qty-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.store-btn-add-cart {
+  flex: 1; background: var(--primary); color: #fff; border: none; border-radius: 8px;
+  font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; font-size: 13px;
+  padding: 0 16px; cursor: pointer; transition: background 0.15s;
+}
+.store-btn-add-cart:hover { background: var(--primary-dark); }
+.store-btn-buy-now {
+  width: 100%; background: var(--brand-red); color: #fff; border: none; border-radius: 8px;
+  font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; font-size: 13.5px;
+  padding: 14px 16px; cursor: pointer; transition: background 0.15s;
+}
+.store-btn-buy-now:hover { background: var(--primary-dark); }
+/* Save to Wishlist - a full-width outline button below Add to Cart/Buy Now,
+   always visible (even when out of stock, unlike those two) so a customer
+   can bookmark something to check back on later. .active (already saved)
+   fills the border/text red and the heart glyph itself switches ♡→♥. */
+.store-detail-wishlist-btn {
+  width: 100%; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: #fff; color: var(--text); border: 1.5px solid var(--border); border-radius: 8px;
+  font-weight: 700; letter-spacing: 0.02em; font-size: 13px; padding: 11px 16px; cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.store-detail-wishlist-btn:hover { border-color: var(--brand-red); color: var(--brand-red); }
+.store-detail-wishlist-btn.active { border-color: var(--brand-red); color: var(--brand-red); }
+.store-detail-wishlist-icon { font-size: 16px; line-height: 1; }
+
+/* ----- Trust badges / info accordion / share row (product detail page) ----- */
+.store-trust-badges {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 480px;
+  border: 1px solid var(--border); border-radius: 10px; padding: 14px 8px; margin-top: 18px;
+}
+.store-trust-badge {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
+  font-size: 12px; font-weight: 600; color: var(--text);
+}
+.store-trust-badge svg { color: var(--brand-red); flex-shrink: 0; }
+
+.store-info-accordion { max-width: 480px; margin-top: 14px; border-top: 1px solid var(--border); }
+.store-accordion-item { border-bottom: 1px solid var(--border); }
+.store-accordion-trigger {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: none; border: none; padding: 13px 2px; font-weight: 700; font-size: 13.5px;
+  color: var(--text); cursor: pointer; text-align: left;
+}
+.store-accordion-icon { flex-shrink: 0; color: var(--brand-red); font-weight: 700; font-size: 15px; }
+.store-accordion-panel { padding: 0 2px 14px; font-size: 13.5px; color: var(--text-muted); line-height: 1.6; }
+
+.store-share-row { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-top: 16px; max-width: 480px; }
+.store-share-link {
+  display: inline-flex; align-items: center; gap: 6px; background: none; border: none; padding: 0;
+  color: var(--text-muted); font-size: 12.5px; font-weight: 600; cursor: pointer; transition: color 0.15s;
+}
+.store-share-link:hover { color: var(--brand-red); text-decoration: none; }
+
+/* "Recently viewed" strip on the product page - cards are built client-side
+   from localStorage (see recently-viewed script in product_detail.html), so
+   they reuse the base .store-card/.store-grid look with a few extra classes
+   for the badge and stock-status line that this strip needs. */
+.store-recently-viewed { margin-top: 40px; }
+.store-recently-viewed-card .store-card-body { display: flex; flex-direction: column; gap: 4px; }
+.store-card-badge-tag {
+  position: absolute; top: 8px; left: 8px; z-index: 1; background: var(--panel-bg);
+  border: 1px solid var(--border); border-radius: 20px; padding: 2px 9px;
+  font-size: 10.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;
+}
+.store-card-rv-brand { font-size: 11.5px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px; }
+.store-card-rv-stock { font-size: 11.5px; font-weight: 600; }
+.store-card-rv-stock.in { color: #1a8a4a; }
+.store-card-rv-stock.low { color: #c07a10; }
+.store-card-rv-stock.out { color: var(--brand-red); }
+
+.store-cart-table td { vertical-align: middle; }
+.store-cart-thumb img { width: 54px; height: 54px; object-fit: contain; border-radius: 6px; background: #f8f6f6; border: 1px solid var(--border); padding: 3px; }
+.store-cart-table input[type="number"] { width: 60px; }
+
+.store-checkout-layout { display: grid; grid-template-columns: 1.4fr 1fr; gap: 24px; align-items: start; }
+.store-order-summary { padding: 18px 20px; border-radius: var(--radius); }
+.store-summary-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 14px; }
+.store-summary-total { font-weight: 700; font-size: 16px; border-top: 1px solid var(--border); margin-top: 6px; padding-top: 10px; }
+
+.store-coupon-box { margin: 14px 0; padding: 14px 16px; border: 1px dashed var(--border); border-radius: var(--radius); background: #fafafa; }
+.store-coupon-form { display: flex; gap: 10px; }
+.store-coupon-form input[type="text"] { flex: 1; max-width: 260px; }
+.store-coupon-applied { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; color: var(--brand-red, #b00020); font-weight: 600; }
+.store-cart-subtotal { font-size: 14px; font-weight: 400; color: var(--muted, #777); }
+.store-cart-discount { color: #1a7f37; font-weight: 600; }
+
+/* ----- order confirmation ----- */
+.store-confirmation { max-width: 680px; margin: 10px auto 0; }
+.store-confirmation-card {
+  background: var(--panel-bg); border: 1px solid var(--border); border-radius: 16px;
+  padding: 32px 30px; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,0.06); margin-bottom: 24px;
+}
+.store-confirmation-icon {
+  width: 64px; height: 64px; border-radius: 50%; background: rgba(22,163,74,0.12); color: var(--success);
+  display: flex; align-items: center; justify-content: center; font-size: 32px; margin: 0 auto 14px;
+}
+.store-confirmation-card h1 { font-size: 24px; margin: 0 0 6px; }
+.store-confirmation-card .store-order-no { font-size: 15px; color: var(--text-muted); margin-bottom: 18px; }
+.store-confirmation-card .store-order-no strong { color: var(--text); }
+.store-confirmation-meta {
+  display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 6px;
+}
+.store-confirmation-pill {
+  background: var(--primary-light); border-radius: 20px; padding: 6px 16px; font-size: 13px; font-weight: 600;
+}
+.store-confirmation table.table { text-align: left; }
+.store-confirmation-note { color: var(--text-muted); font-size: 14px; margin: 18px 0; text-align: center; }
+.store-confirmation-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+/* ----- find a store ----- */
+.store-findstore-intro { color: var(--text-muted); font-size: 14.5px; margin: -6px 0 22px; }
+.store-locations-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px; }
+.store-location-card {
+  background: var(--panel-bg); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 20px 22px;
+}
+.store-location-name { font-weight: 700; font-size: 15.5px; margin-bottom: 8px; }
+.store-location-address {
+  display: flex; align-items: flex-start; gap: 8px; font-size: 13.5px; color: var(--text-muted);
+  line-height: 1.5; margin: 0 0 10px;
+}
+.store-location-address svg { flex-shrink: 0; margin-top: 2px; color: var(--brand-red); }
+.store-location-phone { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--brand-red); font-size: 13.5px; }
+
+/* ----- login / signup ----- */
+.store-auth-wrap { display: flex; justify-content: center; padding: 20px 0 30px; }
+.store-auth-card, .store-track-form {
+  max-width: 440px; width: 100%; background: var(--panel-bg); border: 1px solid var(--border);
+  border-radius: 16px; padding: 36px 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.07);
+}
+.store-auth-card h1 { text-align: center; font-size: 24px; margin: 0 0 6px; }
+.store-auth-subtitle { text-align: center; color: var(--text-muted); font-size: 14px; margin-bottom: 26px; }
+.store-auth-card label { font-size: 13px; font-weight: 600; margin-top: 14px; display: block; }
+.store-auth-card input {
+  width: 100%; padding: 13px 14px; font-size: 15px; border-radius: 10px; border: 1px solid var(--border);
+  margin-top: 6px; box-sizing: border-box;
+}
+.store-auth-card input:focus { border-color: var(--brand-red); outline: none; }
+.store-auth-card .form-actions { margin-top: 24px; }
+.store-auth-card .btn-block { width: 100%; padding: 14px; font-size: 15px; border-radius: 10px; }
+.store-auth-card .hint { text-align: center; margin-top: 20px; font-size: 14px; }
+.store-auth-card input.field-invalid { border-color: var(--danger); }
+.field-error { color: var(--danger); font-size: 12.5px; margin-top: 5px; min-height: 0; }
+.field-hint { color: var(--text-muted); font-size: 12px; margin-top: 6px; line-height: 1.4; }
+
+.store-footer {
+  background: var(--primary); color: rgba(255,255,255,0.75); margin-top: 40px;
+  padding: 0; font-size: 13.5px;
+}
+.store-footer-inner {
+  padding-top: 40px; padding-bottom: 24px;
+  display: grid; grid-template-columns: 1.6fr 1fr 1fr 1.2fr; gap: 30px;
+}
+.store-footer-col h4 { color: #fff; font-size: 14px; margin: 0 0 14px; letter-spacing: 0.3px; }
+.store-footer-col a { display: block; color: rgba(255,255,255,0.72); margin-bottom: 9px; }
+.store-footer-col a:hover { color: #fff; text-decoration: none; }
+.store-footer-brand p { margin: 12px 0 0; line-height: 1.55; color: rgba(255,255,255,0.65); }
+.store-footer-logo { max-height: 40px; filter: brightness(0) invert(1); }
+.store-footer-name { font-size: 19px; font-weight: 700; color: #fff; }
+.store-footer-contact { margin-bottom: 8px; color: rgba(255,255,255,0.72); }
+.store-footer-contact a { color: rgba(255,255,255,0.72); display: inline; }
+.store-footer-contact a:hover { color: #fff; }
+.store-footer-bottom {
+  border-top: 1px solid rgba(255,255,255,0.12); text-align: center; padding: 16px 20px;
+  font-size: 12.5px; color: rgba(255,255,255,0.55);
+}
+
+/* Tablet: keep the desktop 3-section layout, just tighten spacing and drop
+   the text labels on the right-hand action links (icons still visible) so
+   everything keeps fitting on one row without wrapping. */
+@media (max-width: 1024px) {
+  .store-container { padding: 0 18px; }
+  .store-header-inner { gap: 14px; padding-left: 18px; padding-right: 18px; }
+  .store-action-link span:not(.store-cart-label) { display: none; }
+  .store-action-link { padding: 8px; }
+  .store-action-register { padding: 8px 10px; }
+}
+
+@media (max-width: 767px) {
+  .store-product-detail, .store-checkout-layout { grid-template-columns: 1fr; }
+  .store-auth-card, .store-track-form { padding: 28px 22px; }
+  .store-topbar-inner { font-size: 11px; padding-top: 5px; padding-bottom: 5px; }
+  .store-topbar-phone span { display: none; }
+  .store-footer-inner { grid-template-columns: 1fr 1fr; }
+  .store-trust-strip { grid-template-columns: 1fr 1fr; }
+
+  /* Mobile: not enough room for logo + full search bar + actions on one
+     row, so the inline header search bar hides and the icon-toggle button
+     (which slides open #storeMobileSearchBar below the header) takes over. */
+  .store-header-inner { gap: 10px; padding: 10px 16px; min-height: 60px; }
+  .store-sticky-header.is-scrolled .store-header-inner { min-height: 52px; padding-top: 8px; padding-bottom: 8px; }
+  .store-hamburger { display: flex; }
+  .store-header-search { display: none; }
+  .store-search-toggle { display: flex; }
+  .store-header-actions .store-action-link:not(.store-cart-link) { display: none; }
+  .store-cart-link .store-cart-label { display: none; }
+  .store-wishlist-link { display: none; }
+  .store-cart-link { padding: 9px; }
+
+  /* The category/Track-Order nav bar is folded into the hamburger drawer on
+     mobile instead of also showing as a second row - one clear navigation
+     surface instead of two competing ones. */
+  .store-navbar { display: none; }
+}
+
+/* ============================================================
+   Product Review & Rating System
+   ============================================================ */
+
+.review-stars-small { color: #f0b400; letter-spacing: 1px; font-size: 13px; }
+.review-stars-display { display: inline-flex; gap: 1px; font-size: 18px; line-height: 1; }
+.review-stars-display .star { color: #e0dcdc; }
+.review-stars-display .star.filled { color: #f0b400; }
+
+.store-verified-badge {
+  display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600;
+  color: #166534; background: #dcfce7; padding: 3px 9px; border-radius: 20px;
+}
+
+/* ---- Product page reviews section ---- */
+.store-reviews { margin-top: 44px; padding-top: 8px; border-top: 1px solid var(--border); }
+
+.store-reviews-summary {
+  display: flex; gap: 40px; flex-wrap: wrap; align-items: flex-start;
+  background: #fafafa; border: 1px solid var(--border); border-radius: var(--radius); padding: 22px 26px; margin-bottom: 22px;
+}
+.store-reviews-summary-score { text-align: center; min-width: 140px; }
+.store-reviews-avg { font-size: 42px; font-weight: 800; line-height: 1; color: var(--text); }
+.store-reviews-summary-score .review-stars-display { font-size: 20px; margin: 6px 0; justify-content: center; }
+
+.store-reviews-breakdown { flex: 1; min-width: 220px; max-width: 420px; display: flex; flex-direction: column; gap: 6px; }
+.store-reviews-bar-row {
+  display: grid; grid-template-columns: 44px 1fr 32px; align-items: center; gap: 10px;
+  color: var(--text); font-size: 13px; padding: 2px 4px; border-radius: 6px; transition: background 0.15s;
+}
+.store-reviews-bar-row:hover, .store-reviews-bar-row.active { background: rgba(211,32,39,0.06); }
+.store-reviews-bar-track { height: 8px; border-radius: 6px; background: #ece5e5; overflow: hidden; }
+.store-reviews-bar-fill { display: block; height: 100%; background: #f0b400; border-radius: 6px; }
+.store-reviews-bar-count { text-align: right; color: var(--text-muted); }
+
+.store-reviews-actions { margin-bottom: 18px; }
+.store-my-review-note { font-size: 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+.store-review-form {
+  background: #fff; border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 22px; margin-bottom: 26px; max-width: 560px;
+}
+.store-review-form[hidden] { display: none; }
+.store-review-form h3 { margin-top: 0; }
+.store-review-form label { display: block; margin: 12px 0 5px; font-size: 13px; font-weight: 600; color: var(--text); }
+.store-review-form input[type="text"], .store-review-form textarea, .store-review-form input[type="file"] {
+  width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-family: inherit;
+}
+.store-review-anon { display: flex !important; align-items: center; gap: 8px; font-weight: 400 !important; }
+.store-review-anon input { width: auto; }
+
+.store-review-star-input { display: flex; gap: 4px; }
+.store-star-btn {
+  background: none; border: none; font-size: 30px; line-height: 1; cursor: pointer; color: #e0dcdc;
+  padding: 0; transition: color 0.1s, transform 0.1s;
+}
+.store-star-btn:hover, .store-star-btn.filled { color: #f0b400; }
+.store-star-btn:hover { transform: scale(1.12); }
+
+.store-reviews-controls {
+  display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 18px;
+}
+.store-reviews-sort { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.store-reviews-sort select { padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; }
+.store-reviews-filters { display: flex; gap: 8px; flex-wrap: wrap; }
+.store-filter-chip {
+  font-size: 13px; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); color: var(--text);
+  background: #fff; transition: all 0.15s;
+}
+.store-filter-chip:hover { border-color: var(--brand-red); }
+.store-filter-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+.store-reviews-list { display: flex; flex-direction: column; gap: 20px; }
+.store-review-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; scroll-margin-top: 140px; }
+.store-review-card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
+.store-review-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+.store-review-body { font-size: 14px; line-height: 1.6; white-space: pre-wrap; color: var(--text); }
+
+.store-review-photos { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.store-review-photo-thumb {
+  width: 72px; height: 72px; object-fit: cover; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--border); transition: transform 0.15s;
+}
+.store-review-photo-thumb:hover { transform: scale(1.05); }
+.store-review-videos { margin-top: 12px; }
+.store-review-video { max-width: 280px; border-radius: 8px; display: block; }
+
+.store-review-meta { display: flex; gap: 10px; align-items: center; font-size: 12px; color: var(--text-muted); margin-top: 12px; }
+.store-review-author { font-weight: 600; color: var(--text); }
+.store-review-admin-reply {
+  margin-top: 10px; padding: 10px 14px; background: #fafafa; border-left: 3px solid var(--primary);
+  border-radius: 4px; font-size: 13px; line-height: 1.5;
+}
+
+.store-review-helpful-form { margin-top: 12px; }
+.store-helpful-btn {
+  background: none; border: 1px solid var(--border); border-radius: 20px; padding: 6px 14px;
+  font-size: 12px; cursor: pointer; color: var(--text);
+}
+.store-helpful-btn:hover:not(:disabled) { border-color: var(--brand-red); color: var(--brand-red); }
+.store-helpful-btn.voted { background: #ffecec; border-color: var(--brand-red); color: var(--brand-red); }
+.store-helpful-btn:disabled { cursor: default; }
+
+.store-reviews-pagination { display: flex; gap: 6px; justify-content: center; margin-top: 22px; }
+.store-page-link {
+  width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); border-radius: 8px; font-size: 13px; color: var(--text);
+}
+.store-page-link.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+/* ---- Thank You / Google Review popup ---- */
+.store-modal-backdrop {
+  position: fixed; inset: 0; z-index: 1100; background: rgba(20,14,14,0.55);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.store-modal {
+  background: #fff; border-radius: 16px; padding: 34px 30px; max-width: 400px; width: 100%;
+  text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: storeModalPop 0.25s ease;
+}
+@keyframes storeModalPop { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.store-modal-stars { font-size: 30px; margin-bottom: 6px; letter-spacing: 3px; }
+.store-modal h3 { margin: 6px 0 8px; font-size: 19px; }
+.store-modal p { color: var(--text-muted); font-size: 14px; margin: 6px 0; }
+.store-modal-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+
+/* ---- Review edit page ---- */
+.store-review-edit-page { max-width: 560px; margin: 0 auto; }
+
+/* ---- My Account: reviewable purchases ---- */
+.store-reviewable-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.store-reviewable-item {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; font-size: 14px;
+}
+
+/* ---- My Account: My Wishlist ---- */
+.store-wishlist-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.store-wishlist-item {
+  display: flex; align-items: center; gap: 14px; border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px;
+}
+.store-wishlist-item-img {
+  flex: 0 0 auto; width: 56px; height: 56px; border-radius: 8px; overflow: hidden; background: #fafafa;
+  display: flex; align-items: center; justify-content: center;
+}
+.store-wishlist-item-img img { width: 100%; height: 100%; object-fit: contain; }
+.store-wishlist-item-info { flex: 1; min-width: 0; }
+.store-wishlist-item-title { display: block; font-weight: 700; font-size: 14px; color: var(--text); }
+.store-wishlist-item-title:hover { color: var(--brand-red); text-decoration: none; }
+.store-wishlist-item-price { color: var(--brand-red); font-weight: 700; font-size: 13.5px; margin-top: 2px; }
+.store-wishlist-item-oos { color: var(--text-muted, #888); font-size: 12px; margin-top: 2px; }
+.store-wishlist-item-actions { flex: 0 0 auto; display: flex; gap: 8px; align-items: center; }
+@media (max-width: 480px) {
+  .store-wishlist-item { flex-wrap: wrap; }
+  .store-wishlist-item-actions { width: 100%; justify-content: flex-end; }
+}
+
+/* ---- Homepage: Customer Reviews + Google Rating ---- */
+.store-home-reviews { margin-top: 50px; }
+.store-home-reviews-summary { display: flex; align-items: center; gap: 10px; font-size: 15px; margin-bottom: 20px; }
+.store-featured-reviews-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.store-featured-review-card {
+  border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; background: #fff;
+}
+.store-featured-review-img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; margin-bottom: 8px; }
+.store-featured-review-title { font-weight: 700; font-size: 14px; margin: 8px 0 4px; }
+.store-featured-review-body { font-size: 13px; color: var(--text); line-height: 1.6; }
+.store-featured-review-meta { font-size: 12px; color: var(--text-muted); margin-top: 10px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+.store-google-rating {
+  margin-top: 44px; text-align: center; background: #fafafa; border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 30px 20px;
+}
+.store-google-rating-score { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 20px; }
+.store-google-rating-actions { display: flex; gap: 12px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+
+/* ---- Admin: Reviews moderation ---- */
+.review-status-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.review-status-tabs a {
+  padding: 7px 14px; border-radius: 20px; font-size: 13px; color: var(--text); border: 1px solid transparent;
+}
+.review-status-tabs a:hover { background: var(--primary-light); }
+.review-status-tabs a.active { background: var(--primary); color: #fff; }
+.review-admin-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.review-reply-form { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; }
+.review-reply-form textarea { flex: 1; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-family: inherit; }
+
+@media (max-width: 767px) {
+  .store-reviews-summary { flex-direction: column; gap: 20px; padding: 18px; }
+  .store-reviews-breakdown { max-width: none; width: 100%; }
+  .store-featured-reviews-grid { grid-template-columns: 1fr; }
+  .store-reviews-controls { flex-direction: column; align-items: flex-start; }
+}
+
+/* A generic backdrop toggled via JS (hidden attribute) needs this - the
+   base .store-modal-backdrop rule below sets display:flex for the
+   Thank-You/Google popup (which is only ever in the DOM when it should be
+   visible, never toggled), so an attribute-selector override is needed for
+   any OTHER use of the same class that IS shown/hidden via [hidden]
+   (e.g. the Quick View modal below). Higher specificity than the plain
+   class rule regardless of source order, so this always wins when present. */
+.store-modal-backdrop[hidden] { display: none; }
+
+/* ---- "You May Also Like" recommendations (Cart / Checkout) ---- */
+.store-reco-section { margin: 46px 0 10px; }
+.store-reco-header { text-align: center; margin-bottom: 22px; }
+.store-reco-header .store-section-title { margin: 0 0 4px; }
+.store-reco-subtitle { color: var(--text-muted); font-size: 14px; margin: 0; }
+
+.store-reco-swiper { padding: 4px 6px 42px; }
+.store-reco-swiper .swiper-wrapper { align-items: stretch; }
+/* Graceful fallback if the Swiper CDN script is ever blocked (ad-blocker,
+   restrictive network) or hasn't finished loading yet: without Swiper JS,
+   .swiper-wrapper/.swiper-slide have no inline sizing, so on their own
+   they'd stack as full-width blocks (one card per row, very tall page).
+   These rules give the *unstyled* wrapper a sensible horizontal-scroll
+   layout instead - once Swiper does initialize it takes over with its own
+   inline transform/width styles, which simply override this. */
+.store-reco-swiper .swiper-wrapper {
+  display: flex; overflow-x: auto; gap: 16px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
+}
+.store-reco-swiper .swiper-slide { flex: 0 0 82%; scroll-snap-align: start; }
+@media (min-width: 576px) { .store-reco-swiper .swiper-slide { flex-basis: calc(50% - 8px); } }
+@media (min-width: 900px) { .store-reco-swiper .swiper-slide { flex-basis: calc(33.333% - 11px); } }
+@media (min-width: 1200px) { .store-reco-swiper .swiper-slide { flex-basis: calc(25% - 12px); } }
+.store-reco-swiper.swiper-initialized .swiper-wrapper { overflow: visible; }
+.store-reco-card { height: 100%; }
+.store-reco-card .store-card-img { position: relative; }
+.store-reco-card-actions { display: flex; gap: 8px; border-top: 1px solid var(--border); }
+.store-reco-card-actions .store-reco-add-btn { flex: 1; }
+.store-reco-quickview-btn {
+  border: none; background: var(--primary-light); color: var(--text); font-size: 16px;
+  width: 44px; cursor: pointer; transition: background 0.15s;
+}
+.store-reco-quickview-btn:hover { background: var(--border); }
+
+.store-reco-stock-badge {
+  position: absolute; top: 8px; left: 8px; z-index: 1; background: var(--success); color: #fff;
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;
+  padding: 3px 8px; border-radius: 20px;
+}
+.store-reco-stock-badge.low { background: var(--warn); }
+
+/* Swiper's own bundled CSS (loaded from the CDN alongside its JS) is what
+   normally positions/reveals .swiper-button-prev/-next and .swiper-pagination
+   - if that CDN request is ever blocked, these would otherwise render as
+   bare, unstyled, unpositioned browser buttons sitting in normal document
+   flow. Default them to hidden; Swiper's real stylesheet (loaded later in
+   the page, so it wins the cascade tie at equal selector specificity) sets
+   its own `display` on the same plain class names and reveals them properly
+   positioned whenever it does load successfully. */
+.swiper-button-prev, .swiper-button-next, .swiper-pagination { display: none; }
+.store-reco-swiper .swiper-button-prev, .store-reco-swiper .swiper-button-next {
+  width: 36px; height: 36px; background: #fff; border-radius: 50%; box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+  color: var(--primary);
+}
+.store-reco-swiper .swiper-button-prev::after, .store-reco-swiper .swiper-button-next::after { font-size: 14px; font-weight: 700; }
+.store-reco-swiper .swiper-pagination-bullet-active { background: var(--brand-red); }
+@media (max-width: 767px) {
+  .store-reco-swiper .swiper-button-prev, .store-reco-swiper .swiper-button-next { display: none; }
+}
+
+/* ---- Toast (used by the AJAX "Add to Cart" flow) ---- */
+.store-toast {
+  position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(20px);
+  background: var(--primary); color: #fff; padding: 12px 22px; border-radius: 30px; font-size: 14px;
+  font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,0.25); z-index: 1200; opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease; pointer-events: none;
+}
+.store-toast.is-visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+.store-toast.is-error { background: var(--danger); }
+
+/* ---- Quick View modal ---- */
+.store-quickview-modal { max-width: 720px; text-align: left; padding: 30px; position: relative; }
+.store-modal-close {
+  position: absolute; top: 14px; right: 14px; border: none; background: transparent; font-size: 22px;
+  line-height: 1; cursor: pointer; color: var(--text-muted); width: 32px; height: 32px; border-radius: 50%;
+}
+.store-modal-close:hover { background: var(--primary-light); color: var(--text); }
+.store-quickview-body { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
+.store-quickview-loading { grid-column: 1 / -1; text-align: center; padding: 40px 0; color: var(--text-muted); }
+.store-quickview-gallery { display: flex; flex-direction: column; gap: 10px; }
+.store-quickview-main-img {
+  width: 100%; aspect-ratio: 1 / 1; object-fit: contain; background: #f8f6f6; border-radius: 10px; padding: 10px;
+}
+.store-quickview-thumbs { display: flex; gap: 8px; flex-wrap: wrap; }
+.store-quickview-thumb {
+  width: 52px; height: 52px; object-fit: contain; background: #f8f6f6; border-radius: 8px; padding: 4px;
+  border: 2px solid transparent; cursor: pointer;
+}
+.store-quickview-thumb.active { border-color: var(--brand-red); }
+.store-quickview-info h3 { margin: 0 0 10px; font-size: 19px; }
+.store-quickview-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+@media (max-width: 767px) {
+  .store-quickview-body { grid-template-columns: 1fr; }
+  .store-quickview-modal { padding: 22px 18px; max-height: 88vh; overflow-y: auto; }
+}
+
+/* ---- Activity Notifications ("Notifications" sidebar tab) ---- */
+.notification-list { display: flex; flex-direction: column; gap: 2px; }
+.notification-row {
+  display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border-radius: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.notification-row.is-unread { background: var(--primary-light); }
+.notification-row-icon { font-size: 18px; line-height: 1; margin-top: 2px; }
+.notification-row-body { flex: 1; min-width: 0; }
+.notification-row-title { font-weight: 600; font-size: 14px; }
+.notification-row.is-unread .notification-row-title { font-weight: 700; }
+.notification-row-message { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+.notification-row-meta { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+.notification-row-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.notification-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--brand-red, #d33); flex-shrink: 0; margin-top: 6px; }
+.badge.notif-order_placed { background: #e0e7ff; color: #3730a3; }
+.badge.notif-delivery_due { background: #fee2e2; color: #991b1b; }
+.badge.notif-review_submitted { background: #fef3c7; color: #92400e; }
+.badge.notif-membership_requested { background: #d1fae5; color: #065f46; }
