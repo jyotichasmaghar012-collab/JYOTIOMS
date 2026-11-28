@@ -272,19 +272,31 @@ context_processor(function _inject_store_branches() {
   return { store_branches: get_db().execute('SELECT id, name, address, phone FROM branches ORDER BY name').fetchall() };
 }, 'store');
 
-// Brands mega-menu, grouped by first letter.
+// Brands mega-menu, grouped by first letter: every Active brand from
+// Website Management > Brands, plus any brand that has items on sale but
+// isn't in that list yet. Names are de-duplicated ignoring case, keeping the
+// Brands-page spelling.
 context_processor(function _inject_store_brands() {
-  const rows = get_db().execute(`SELECT DISTINCT brand FROM (
+  const db = get_db();
+  const listed = db.execute(`SELECT name AS brand FROM brands WHERE is_active=1 AND name IS NOT NULL AND TRIM(name) != ''`).fetchall();
+  const stocked = db.execute(`SELECT DISTINCT brand FROM (
              SELECT brand FROM frames WHERE online_visible=1 AND is_active=1 AND stock_qty > 0
              UNION
              SELECT brand FROM contact_lenses WHERE online_visible=1 AND is_active=1 AND stock_qty > 0
-           ) WHERE brand IS NOT NULL AND TRIM(brand) != '' ORDER BY brand COLLATE NOCASE`).fetchall();
+           ) WHERE brand IS NOT NULL AND TRIM(brand) != ''`).fetchall();
+  const byKey = new Map();
+  for (const r of [...listed, ...stocked]) {
+    const name = String(r.brand).trim();
+    const key = name.toLowerCase();
+    if (!byKey.has(key)) byKey.set(key, name);
+  }
+  const names = [...byKey.values()].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
   const grouped = [];
   let current = null;
-  for (const r of rows) {
-    const letter = String(r.brand)[0].toUpperCase();
+  for (const name of names) {
+    const letter = name[0].toUpperCase();
     if (letter !== current) { grouped.push({ letter, brands: [] }); current = letter; }
-    grouped[grouped.length - 1].brands.push(r.brand);
+    grouped[grouped.length - 1].brands.push(name);
   }
   return { store_brands_grouped: grouped };
 }, 'store');
