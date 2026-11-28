@@ -222,16 +222,36 @@ app.set('query parser', 'simple');
 app.set('trust proxy', true);
 app.disable('x-powered-by');
 
+/** Browser caching for /static:
+ *  - URL carries ?v=<content hash> (url_for adds it to CSS/JS/icons): 1 year,
+ *    a changed file gets a new URL on the next deploy.
+ *  - uploads/: 10 minutes (some keep a fixed name, e.g. the shop logo, so a
+ *    replaced image shows up soon), then a cheap ETag re-check.
+ *  - anything else: 1 hour. */
+function setStaticCacheHeaders(res) {
+  const req = res.req;
+  let value = 'public, max-age=3600';
+  if (req && req.query && req.query.v) value = 'public, max-age=31536000, immutable';
+  // req.path is "/uploads/..." inside the /static mount, "/static/uploads/..." outside it.
+  else if (req && /^(\/static)?\/uploads\//.test(req.path)) value = 'public, max-age=600';
+  res.setHeader('Cache-Control', value);
+}
+const staticOpts = { fallthrough: true, setHeaders: setStaticCacheHeaders };
+
 if (storage.UPLOAD_STATIC !== storage.REPO_STATIC) {
   // Newly uploaded files (temp folder on Vercel) take priority over the repo copy.
-  app.use('/static', express.static(storage.UPLOAD_STATIC, { fallthrough: true }));
+  app.use('/static', express.static(storage.UPLOAD_STATIC, staticOpts));
 }
-app.use('/static', express.static(storage.REPO_STATIC, { fallthrough: true }));
+app.use('/static', express.static(storage.REPO_STATIC, staticOpts));
 if (mongosync.enabled()) {
   // An upload this instance hasn't seen yet: fetch it from MongoDB once.
   app.get('/static/uploads/*', (req, res, next) => {
     mongosync.fetchUpload(req.path.replace(/^\/static\//, ''))
-      .then((p) => (p ? res.sendFile(p) : next()))
+      .then((p) => {
+        if (!p) return next();
+        setStaticCacheHeaders(res);
+        return res.sendFile(p);
+      })
       .catch(next);
   });
 }

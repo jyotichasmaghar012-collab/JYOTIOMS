@@ -44,7 +44,14 @@
 {% if brand %}
 <div class="store-search-results-bar">
   <div>Brand: <strong>{{ brand|join(', ') }}</strong></div>
-  <a href="{{ url_for('store.home', cat=(category if category != 'all' else none), gender=(gender if gender != 'all' else none), q=(search_query or none)) }}" class="store-clear-search">&times; Clear brand filter</a>
+  <a href="{{ url_for('store.home', cat=(category if category != 'all' else none), gender=(gender if gender != 'all' else none), q=(search_query or none), shape=(shape['id'] if shape else none)) }}" class="store-clear-search">&times; Clear brand filter</a>
+</div>
+{% endif %}
+
+{% if shape %}
+<div class="store-search-results-bar">
+  <div>Shape: <strong>{{ shape['name'] }}</strong>{% if category == 'Eyeglasses' or category == 'Sunglasses' %} &middot; {{ category }}{% endif %}</div>
+  <a href="{{ url_for('store.home', cat=(category if category != 'all' else none), gender=(gender if gender != 'all' else none), q=(search_query or none), brand=(brand or none)) }}" class="store-clear-search">&times; Clear shape filter</a>
 </div>
 {% endif %}
 
@@ -108,17 +115,18 @@
 <div id="store-nav-region">
 {% set keep_cat = category if category != 'all' else none %}
 {% set keep_brand = brand or none %}
+{% set keep_shape = shape['id'] if shape else none %}
 <div class="store-gender-nav" id="store-gender-nav">
-  <a href="{{ url_for('store.home', cat=keep_cat, gender='all', brand=keep_brand) }}" class="store-gender-card store-gender-card-all{{ ' active' if gender == 'all' else '' }}">
+  <a href="{{ url_for('store.home', cat=keep_cat, gender='all', brand=keep_brand, shape=keep_shape) }}" class="store-gender-card store-gender-card-all{{ ' active' if gender == 'all' else '' }}">
     <span class="store-gender-name">All</span>
   </a>
-  <a href="{{ url_for('store.home', cat=keep_cat, gender='men', brand=keep_brand) }}" class="store-gender-card store-gender-card-men{{ ' active' if gender == 'men' else '' }}">
+  <a href="{{ url_for('store.home', cat=keep_cat, gender='men', brand=keep_brand, shape=keep_shape) }}" class="store-gender-card store-gender-card-men{{ ' active' if gender == 'men' else '' }}">
     <span class="store-gender-name">Men</span>
   </a>
-  <a href="{{ url_for('store.home', cat=keep_cat, gender='women', brand=keep_brand) }}" class="store-gender-card store-gender-card-women{{ ' active' if gender == 'women' else '' }}">
+  <a href="{{ url_for('store.home', cat=keep_cat, gender='women', brand=keep_brand, shape=keep_shape) }}" class="store-gender-card store-gender-card-women{{ ' active' if gender == 'women' else '' }}">
     <span class="store-gender-name">Women</span>
   </a>
-  <a href="{{ url_for('store.home', cat=keep_cat, gender='kids', brand=keep_brand) }}" class="store-gender-card store-gender-card-kids{{ ' active' if gender == 'kids' else '' }}">
+  <a href="{{ url_for('store.home', cat=keep_cat, gender='kids', brand=keep_brand, shape=keep_shape) }}" class="store-gender-card store-gender-card-kids{{ ' active' if gender == 'kids' else '' }}">
     <span class="store-gender-name">Kids</span>
   </a>
 </div>
@@ -186,6 +194,50 @@
     {% endfor %}
   </div>
 </div>
+{% endif %}
+
+{% if shop_by_shapes %}
+{% from "store/_shape_icon.html" import shape_icon %}
+{% set shape_tab = 'Eyeglasses' if category == 'Eyeglasses' else 'Sunglasses' %}
+<div class="store-slider-section store-shape-section">
+  <h2 class="store-section-title">Shop by Shape</h2>
+  <div class="store-shape-tabs" role="tablist">
+    {% for tab in ['Sunglasses', 'Eyeglasses'] %}
+    <button type="button" role="tab" class="store-shape-tab{{ ' active' if tab == shape_tab else '' }}"
+            aria-selected="{{ 'true' if tab == shape_tab else 'false' }}" data-shape-tab="{{ tab }}">{{ tab }}</button>
+    {% endfor %}
+  </div>
+  {% for tab in ['Sunglasses', 'Eyeglasses'] %}
+  <div class="store-shape-grid" role="tabpanel" data-shape-panel="{{ tab }}"{% if tab != shape_tab %} hidden{% endif %}>
+    {% for s in shop_by_shapes %}
+    <a href="{{ url_for('store.home', cat=tab, shape=s['id']) }}#store-catalog"
+       class="store-shape-card{{ ' active' if shape and shape['id'] == s['id'] and category == tab else '' }}">
+      {{ shape_icon(s['name']) }}
+      <span class="store-shape-name">{{ s['name'] }}</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+<script>
+(function () {
+  var section = document.currentScript.previousElementSibling;
+  var tabs = section.querySelectorAll("[data-shape-tab]");
+  tabs.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var name = btn.getAttribute("data-shape-tab");
+      tabs.forEach(function (b) {
+        var on = b === btn;
+        b.classList.toggle("active", on);
+        b.setAttribute("aria-selected", on ? "true" : "false");
+      });
+      section.querySelectorAll("[data-shape-panel]").forEach(function (p) {
+        p.hidden = p.getAttribute("data-shape-panel") !== name;
+      });
+    });
+  });
+})();
+</script>
 {% endif %}
 
 {{ product_slider(best_sellers, 'Best Sellers') }}
@@ -279,7 +331,7 @@
     </div>
     {% endif %}
 
-    {% if sort != 'brand' or price_min is not none or price_max is not none or brand %}
+    {% if sort != 'brand' or price_min is not none or price_max is not none or brand or shape %}
     <a href="{{ url_for('store.home', cat=(category if category != 'all' else none), gender=(gender if gender != 'all' else none), q=(search_query or none)) }}" class="store-filter-clear-link">&times; Clear all filters</a>
     {% endif %}
   </div>

@@ -538,8 +538,9 @@ a:hover { text-decoration: underline; }
 .product-photo-preview img { max-width: 140px; max-height: 140px; border-radius: 8px; border: 1px solid #e2e8f0; object-fit: cover; }
 
 /* ===== Homepage Banners admin ===== */
-.banner-table .banner-thumb { width: 90px; height: 50px; border-radius: 6px; overflow: hidden; background: #f8f6f6; }
-.banner-table .banner-thumb img { width: 100%; height: 100%; object-fit: cover; }
+/* Used by Banners, Brands, Categories and Promotions lists - not only .banner-table. */
+.banner-thumb { width: 90px; height: 50px; border-radius: 6px; overflow: hidden; background: #f8f6f6; }
+.banner-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .banner-drag-handle { cursor: grab; color: var(--text-muted); font-size: 18px; text-align: center; width: 24px; }
 .banner-row.dragging { opacity: 0.4; }
 .banner-row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -1346,6 +1347,31 @@ a:hover { text-decoration: underline; }
 .store-brand-logo-img { width: 100%; height: 60px; object-fit: contain; }
 .store-brand-logo-fallback { width: 100%; height: 60px; display: flex; align-items: center; justify-content: center; font-size: 26px; opacity: 0.4; }
 .store-brand-logo-name { font-size: 12px; font-weight: 600; }
+
+/* ===== Storefront: Shop by Shape ===== */
+.store-shape-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.store-shape-tab {
+  padding: 13px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel-bg);
+  font: inherit; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text); cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.store-shape-tab:hover { border-color: var(--primary); }
+.store-shape-tab.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.store-shape-tab:focus-visible, .store-shape-card:focus-visible { outline: 2px solid var(--brand-red, var(--primary)); outline-offset: 2px; }
+.store-shape-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.store-shape-grid[hidden] { display: none; }
+.store-shape-card {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  padding: 20px 8px 16px; background: var(--panel-bg); border: 1px solid var(--border); border-radius: var(--radius);
+  color: var(--text); text-align: center; transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s;
+}
+.store-shape-card:hover { box-shadow: 0 10px 24px rgba(0,0,0,0.08); transform: translateY(-2px); color: var(--text); text-decoration: none; }
+.store-shape-card.active { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
+.store-shape-icon { width: 56px; height: 22px; display: block; }
+.store-shape-name { font-size: 13px; }
+@media (max-width: 900px) { .store-shape-grid { grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 640px) { .store-shape-grid { grid-template-columns: repeat(3, 1fr); } .store-shape-card { padding: 14px 4px 12px; } }
+@media (max-width: 380px) { .store-shape-grid { grid-template-columns: repeat(2, 1fr); } }
 
 .store-trust-strip {
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 46px 0 10px;

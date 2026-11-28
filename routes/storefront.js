@@ -339,14 +339,26 @@ function genderFragments(gender) {
   };
 }
 
+/** Active frame shapes for the homepage "Shop by Shape" grid, in the order
+ *  they were added (Inventory > Frame Shapes). */
+const _active_frame_shapes = (db) => db.execute('SELECT id, name FROM frame_shapes WHERE is_active=1 ORDER BY id').fetchall();
+
+/** ?shape=<id> -> that active frame shape row, or null. */
+function _selected_shape(db, raw) {
+  const id = parseInt(String(raw || ''), 10);
+  if (!id) return null;
+  return db.execute('SELECT id, name FROM frame_shapes WHERE id=? AND is_active=1', [id]).fetchone() || null;
+}
+
 /** Brand facet values - every active filter EXCEPT brand itself. */
-function _available_brands(db, category, gender, q) {
+function _available_brands(db, category, gender, q, shape_id = null) {
   const { gf, gfp, gc, gcp } = genderFragments(gender);
   const names = new Set();
   if (category !== 'contact_lens') {
     let where = 'frames.online_visible=1 AND frames.is_active=1 AND frames.stock_qty > 0';
     const params = [];
     if (category === 'Eyeglasses' || category === 'Sunglasses') { where += ' AND category = ?'; params.push(category); }
+    if (shape_id) { where += ' AND frames.frame_shape_id = ?'; params.push(shape_id); }
     if (q) {
       const like = `%${q}%`;
       where += ' AND (brand LIKE ? OR model LIKE ? OR color LIKE ? OR category LIKE ?)';
@@ -358,7 +370,8 @@ function _available_brands(db, category, gender, q) {
       if (r.brand) names.add(r.brand);
     }
   }
-  if (category === 'all' || category === 'contact_lens') {
+  // Contact lenses have no frame shape, so a shape filter leaves them out.
+  if (!shape_id && (category === 'all' || category === 'contact_lens')) {
     let where = 'online_visible=1 AND is_active=1 AND stock_qty > 0';
     const params = [];
     if (q) {
@@ -828,8 +841,10 @@ bp.route('/', function home() {
   const sort = _normalize_sort(a.get('sort'));
   const price_min = _parse_price(a.get('price_min'));
   const price_max = _parse_price(a.get('price_max'));
+  const shape = _selected_shape(db, a.get('shape'));
+  const shape_id = shape ? shape.id : null;
   const total_products = _catalog_totals(db);
-  const available_brands = _available_brands(db, category, gender, q);
+  const available_brands = _available_brands(db, category, gender, q, shape_id);
   const oc = _current_online_customer(db);
   const wishlist_ids = _wishlist_ids(db, oc ? oc.customer_id : null);
 
@@ -840,6 +855,9 @@ bp.route('/', function home() {
     bc = ` AND brand COLLATE NOCASE IN (${ph})`; bcp = [...brand];
   }
   const { gf, gfp, gc, gcp } = genderFragments(gender);
+  // Shape filter (frames only - contact lenses are dropped while it is set).
+  const sf = shape_id ? ' AND frames.frame_shape_id = ?' : '';
+  const sfp = shape_id ? [shape_id] : [];
   let price_sql = ''; const price_params = [];
   if (price_min !== null) { price_sql += ' AND selling_price >= ?'; price_params.push(price_min); }
   if (price_max !== null) { price_sql += ' AND selling_price <= ?'; price_params.push(price_max); }
@@ -849,7 +867,7 @@ bp.route('/', function home() {
     const [fr, frame_group_swatches, frame_group_price_from] = _dedupe_grouped_frames(db, frames);
     const fids = fr.map((f) => f.id); const cids = contacts.map((c) => c.id);
     return {
-      frames: fr, contacts, category, gender, brand, sort, sort_options: SORT_LABELS, price_min, price_max,
+      frames: fr, contacts, category, gender, brand, shape, sort, sort_options: SORT_LABELS, price_min, price_max,
       available_brands, wishlist_ids, total_products,
       frame_hover_images: _second_images_for(db, 'frame', fids),
       contact_hover_images: _second_images_for(db, 'contact_lens', cids),
@@ -863,14 +881,15 @@ bp.route('/', function home() {
     const like = `%${q}%`;
     const frames = db.execute(`SELECT frames.* FROM frames LEFT JOIN genders g ON g.id = frames.gender_id
                WHERE frames.online_visible=1 AND frames.is_active=1 AND frames.stock_qty > 0
-               AND (brand LIKE ? OR model LIKE ? OR color LIKE ? OR category LIKE ?)${gf}${bf}${price_sql}
-               ORDER BY ${sort_sql}`, [like, like, like, like, ...gfp, ...bfp, ...price_params]).fetchall();
-    const contacts = db.execute(`SELECT * FROM contact_lenses WHERE online_visible=1 AND is_active=1 AND stock_qty > 0
+               AND (brand LIKE ? OR model LIKE ? OR color LIKE ? OR category LIKE ?)${gf}${bf}${sf}${price_sql}
+               ORDER BY ${sort_sql}`, [like, like, like, like, ...gfp, ...bfp, ...sfp, ...price_params]).fetchall();
+    const contacts = shape_id ? [] : db.execute(`SELECT * FROM contact_lenses WHERE online_visible=1 AND is_active=1 AND stock_qty > 0
                AND (brand LIKE ? OR lens_type LIKE ? OR power LIKE ?)${gc}${bc}${price_sql}
                ORDER BY ${sort_sql}`, [like, like, like, ...gcp, ...bcp, ...price_params]).fetchall();
     return render_template('store/home.html', {
       ...common(frames, contacts), search_query: q, banners: [], side_posters: {},
       best_sellers: [], new_arrivals: [], featured_products: [], showcase_brands: [], showcase_categories: [],
+      shop_by_shapes: [],
       active_promotions: [], active_trust_items: [], active_store_services: [], category_seo: null,
       ..._shop_ctx(),
     });
@@ -884,11 +903,11 @@ bp.route('/', function home() {
     params.push(category);
     category_seo = db.execute('SELECT meta_title, meta_description FROM categories WHERE name=? COLLATE NOCASE', [category]).fetchone();
   }
-  frames_q += gf + bf + price_sql;
-  params.push(...gfp, ...bfp, ...price_params);
+  frames_q += gf + bf + sf + price_sql;
+  params.push(...gfp, ...bfp, ...sfp, ...price_params);
   const frames = category !== 'contact_lens' ? db.execute(frames_q + ` ORDER BY ${sort_sql}`, params).fetchall() : [];
   let contacts = [];
-  if (category === 'all' || category === 'contact_lens') {
+  if (!shape_id && (category === 'all' || category === 'contact_lens')) {
     contacts = db.execute(`SELECT * FROM contact_lenses WHERE online_visible=1 AND is_active=1 AND stock_qty > 0${gc}${bc}${price_sql} ORDER BY ${sort_sql}`,
       [...gcp, ...bcp, ...price_params]).fetchall();
   }
@@ -900,6 +919,7 @@ bp.route('/', function home() {
     featured_products: _flagged_products(db, 'is_featured'),
     showcase_brands: _active_brands_with_logo(db),
     showcase_categories: _active_categories_with_image(db),
+    shop_by_shapes: _active_frame_shapes(db),
     active_promotions: _active_promotions(db),
     active_trust_items: _active_trust_items(db),
     active_store_services: _active_store_services(db),

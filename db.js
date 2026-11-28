@@ -46,7 +46,21 @@ function paginate(db, count_sql, count_params, page_arg, per_page = DEFAULT_PAGE
   return [total, total_pages, page, offset];
 }
 
+// While init_db() runs, every migration shares this one connection instead of
+// opening/closing ~30 connections (faster cold starts on Vercel).
+let _sharedConn = null;
+
 function withConn(fn) {
+  if (_sharedConn) {
+    try {
+      return fn(_sharedConn);
+    } finally {
+      // Same end state as closing a fresh connection: drop anything left
+      // uncommitted and restore connection defaults for the next migration.
+      _sharedConn.rollback();
+      _sharedConn.raw.exec('PRAGMA foreign_keys = OFF');
+    }
+  }
   const conn = connect(DB_PATH);
   try {
     return fn(conn);
@@ -69,6 +83,17 @@ function init_db() {
   fs.mkdirSync(path.join(DATA_DIR, 'backups'), { recursive: true });
   fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
   const fresh = !fs.existsSync(DB_PATH);
+  _sharedConn = connect(DB_PATH);
+  try {
+    _run_migrations(fresh);
+  } finally {
+    const c = _sharedConn;
+    _sharedConn = null;
+    c.close();
+  }
+}
+
+function _run_migrations(fresh) {
   withConn((conn) => {
     conn.executescript(fs.readFileSync(SCHEMA_PATH, 'utf8'));
     conn.commit();
@@ -105,6 +130,28 @@ function init_db() {
   ensure_trust_and_services_tables();
   ensure_seo_fields();
   ensure_wishlist_table();
+  ensure_default_frame_shapes();
+}
+
+/** One-time starter list for the storefront "Shop by Shape" grid. Only runs
+ *  if the shop has no frame shapes yet, and never again afterwards (a flag in
+ *  settings), so shapes the admin deletes or renames are not brought back. */
+const DEFAULT_FRAME_SHAPES = [
+  'Aviator', 'Wayfarer', 'Cat-eye', 'Hexagonal', 'Round', 'Square', 'Rectangle',
+  'Oval', 'Butterfly', 'Pentagon', 'Traveller', 'Sporty', 'Triangular',
+];
+function ensure_default_frame_shapes() {
+  withConn((conn) => {
+    if (conn.execute("SELECT 1 FROM settings WHERE key='frame_shapes_seeded'").fetchone()) return;
+    const count = conn.execute('SELECT COUNT(*) c FROM frame_shapes').fetchone().c;
+    if (count === 0) {
+      for (const name of DEFAULT_FRAME_SHAPES) {
+        conn.execute('INSERT OR IGNORE INTO frame_shapes (name) VALUES (?)', [name]);
+      }
+    }
+    conn.execute("INSERT INTO settings (key, value) VALUES ('frame_shapes_seeded', '1')");
+    conn.commit();
+  });
 }
 
 function ensure_activity_notifications_table() {
