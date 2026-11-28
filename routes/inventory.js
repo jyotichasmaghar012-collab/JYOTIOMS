@@ -204,6 +204,104 @@ bp.route('/product-images/<item_type>/<int:item_id>/reorder', ['POST'], login_re
   return jsonify({ ok: true });
 }));
 
+/* ---------------- "Fill from product link" ---------------- */
+const productimport = require('../lib/productimport');
+const { sharp } = require('../lib/images');
+const MAX_IMPORTED_IMAGES = 8;
+const IMPORT_IMAGE_TIMEOUT_MS = 7000;
+const IMPORT_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+const IMPORT_IMAGE_MAX_SIDE = 1600;
+
+/** GET (not POST) on purpose: it only reads another website and never writes
+ *  to the database, so in MongoDB mode it skips the write lock/save cycle. */
+bp.route('/frames/import-link', login_required(async function frames_import_link() {
+  const url = request.args.get('url', '').trim();
+  if (!url) return [jsonify({ ok: false, error: 'Paste a product link first.' }), 400];
+  try {
+    return jsonify({ ok: true, product: await productimport.importProduct(url) });
+  } catch (e) {
+    if (e instanceof productimport.ImportError) return jsonify({ ok: false, error: e.message });
+    console.error('Product link import failed:', e);
+    return jsonify({ ok: false, error: 'Could not read that link.' });
+  }
+}));
+
+/** "Paste page source" fallback for sites that block automated requests: the
+ *  staff member copies the page source from their own browser and the same
+ *  readers parse it. POST because the source is large; JSON-only so a plain
+ *  cross-site form cannot submit it. Nothing is written to the database. */
+const IMPORT_HTML_MAX_CHARS = 4 * 1024 * 1024;
+bp.route('/frames/import-html', ['POST'], login_required(async function frames_import_html() {
+  if (!request.is_json) return [jsonify({ ok: false, error: 'Bad request.' }), 400];
+  const body = request.get_json() || {};
+  const html = typeof body.html === 'string' ? body.html : '';
+  if (!html.trim()) return [jsonify({ ok: false, error: 'Paste the page source first.' }), 400];
+  if (html.length > IMPORT_HTML_MAX_CHARS) return jsonify({ ok: false, error: 'The pasted page source is too large.' });
+  try {
+    return jsonify({ ok: true, product: productimport.importFromHtml(html, typeof body.url === 'string' ? body.url : '') });
+  } catch (e) {
+    if (e instanceof productimport.ImportError) return jsonify({ ok: false, error: e.message });
+    console.error('Page source import failed:', e);
+    return jsonify({ ok: false, error: 'Could not read that page source.' });
+  }
+}));
+
+/** Download one picked photo, re-encode it (JPEG/PNG/WEBP, max 1600px) and
+ *  store it under uploads/products/. Returns the static path or null. */
+async function _download_product_image(url, item_type, item_id) {
+  try {
+    const { buf } = await productimport.safeFetch(url, {
+      accept: 'image/avif,image/webp,image/png,image/jpeg,image/*;q=0.8',
+      maxBytes: IMPORT_IMAGE_MAX_BYTES, timeoutMs: IMPORT_IMAGE_TIMEOUT_MS,
+    });
+    if (!sharp) return null;
+    const meta = await sharp(buf).metadata();
+    if (!meta || !meta.width || !meta.height) return null;
+    const keep = { png: 'png', webp: 'webp', jpeg: 'jpg' }[meta.format] || 'jpg';
+    let p = sharp(buf).rotate().resize({ width: IMPORT_IMAGE_MAX_SIDE, height: IMPORT_IMAGE_MAX_SIDE, fit: 'inside', withoutEnlargement: true });
+    if (keep === 'jpg') p = p.flatten({ background: '#ffffff' }).jpeg({ quality: 88, mozjpeg: true });
+    else if (keep === 'png') p = p.png();
+    else p = p.webp({ quality: 88 });
+    const out = await p.toBuffer();
+    fs.mkdirSync(PRODUCT_UPLOAD_DIR, { recursive: true });
+    const rand = crypto.randomUUID().replace(/-/g, '').slice(0, 10);
+    const filename = secure_filename(`${item_type}_${item_id}_${rand}.${keep}`);
+    fs.writeFileSync(path.join(PRODUCT_UPLOAD_DIR, filename), out);
+    return `uploads/products/${filename}`;
+  } catch (_) {
+    return null;
+  }
+}
+
+/** Add the photos picked in the "Fill from product link" box to the
+ *  product's gallery (in the picked order). Returns [added, failed]. */
+async function _import_gallery_images(db, item_type, item_id, urls) {
+  const picked = [...new Set(urls.map((u) => String(u || '').trim()).filter((u) => /^https?:\/\//i.test(u)))];
+  if (!picked.length) return [0, 0];
+  const existing = _gallery_images(db, item_type, item_id);
+  const room = Math.min(MAX_IMPORTED_IMAGES, MAX_GALLERY_IMAGES - existing.length);
+  const todo = picked.slice(0, Math.max(0, room));
+  const paths = await Promise.all(todo.map((u) => _download_product_image(u, item_type, item_id)));
+  let next_order = existing.length ? existing[existing.length - 1].sort_order + 1 : 0;
+  let has_primary = existing.some((r) => r.is_primary);
+  let added = 0;
+  for (const p of paths) {
+    if (!p) continue;
+    db.execute('INSERT INTO product_images (item_type, item_id, image_path, sort_order, is_primary) VALUES (?,?,?,?,?)',
+      [item_type, item_id, p, next_order, has_primary ? 0 : 1]);
+    next_order += 1; added += 1; has_primary = true;
+  }
+  db.commit();
+  if (added) _sync_primary_image_path(db, item_type, item_id);
+  return [added, picked.length - added];
+}
+
+function _import_flash_suffix(added, failed) {
+  if (!added && !failed) return '';
+  if (!failed) return ` ${added} photo(s) added from the product link.`;
+  return ` ${added} photo(s) added from the product link, ${failed} could not be downloaded (add them by hand if needed).`;
+}
+
 /** Active checkbox; a hidden is_active_present sentinel distinguishes
  *  "unchecked" from "field never sent" (defaults to Active). */
 function _resolve_is_active(form) {
@@ -301,7 +399,7 @@ function frameValues(f, legacy, fk) {
   ];
 }
 
-bp.route('/frames/new', ['GET', 'POST'], login_required(function frames_new() {
+bp.route('/frames/new', ['GET', 'POST'], login_required(async function frames_new() {
   const db = get_db();
   if (request.method === 'POST') {
     const f = request.form;
@@ -331,7 +429,8 @@ bp.route('/frames/new', ['GET', 'POST'], login_required(function frames_new() {
       db.execute("INSERT INTO product_images (item_type, item_id, image_path, sort_order, is_primary) VALUES ('frame',?,?,0,1)", [frame_id, image_path]);
     }
     db.commit();
-    flash('Frame added. You can add more photos to its gallery from here.', 'success');
+    const [imp_added, imp_failed] = await _import_gallery_images(db, 'frame', frame_id, f.getlist('import_image_url'));
+    flash('Frame added. You can add more photos to its gallery from here.' + _import_flash_suffix(imp_added, imp_failed), 'success');
     return redirect(url_for('inventory.frames_edit', { item_id: frame_id }));
   }
   return render_template('inventory/frame_form.html', {
@@ -340,7 +439,7 @@ bp.route('/frames/new', ['GET', 'POST'], login_required(function frames_new() {
   });
 }));
 
-bp.route('/frames/<int:item_id>/edit', ['GET', 'POST'], login_required(function frames_edit({ item_id }) {
+bp.route('/frames/<int:item_id>/edit', ['GET', 'POST'], login_required(async function frames_edit({ item_id }) {
   const db = get_db();
   const frame = db.execute('SELECT * FROM frames WHERE id=?', [item_id]).fetchone();
   if (!frame) {
@@ -367,7 +466,8 @@ bp.route('/frames/<int:item_id>/edit', ['GET', 'POST'], login_required(function 
     const image_path = _save_product_image(request.files.get('image'), 'frame', item_id);
     if (image_path) db.execute('UPDATE frames SET image_path=? WHERE id=?', [image_path, item_id]);
     db.commit();
-    flash('Frame updated.', 'success');
+    const [imp_added, imp_failed] = await _import_gallery_images(db, 'frame', item_id, f.getlist('import_image_url'));
+    flash('Frame updated.' + _import_flash_suffix(imp_added, imp_failed), 'success');
     return redirect(url_for('inventory.frames_index'));
   }
   return render_template('inventory/frame_form.html', {

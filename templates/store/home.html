@@ -198,18 +198,21 @@
 
 {% if shop_by_shapes %}
 {% from "store/_shape_icon.html" import shape_icon %}
-{% set shape_tab = 'Eyeglasses' if category == 'Eyeglasses' else 'Sunglasses' %}
+{# shop_by_shapes = [{tab, shapes}] - only tabs/shapes with frames in stock. #}
+{% set tab_names = shop_by_shapes|map(attribute='tab')|list %}
+{% set shape_tab = category if category in tab_names else tab_names[0] %}
 <div class="store-slider-section store-shape-section">
   <h2 class="store-section-title">Shop by Shape</h2>
-  <div class="store-shape-tabs" role="tablist">
-    {% for tab in ['Sunglasses', 'Eyeglasses'] %}
+  <div class="store-shape-tabs{{ ' store-shape-tabs-single' if tab_names|length == 1 else '' }}" role="tablist">
+    {% for tab in tab_names %}
     <button type="button" role="tab" class="store-shape-tab{{ ' active' if tab == shape_tab else '' }}"
             aria-selected="{{ 'true' if tab == shape_tab else 'false' }}" data-shape-tab="{{ tab }}">{{ tab }}</button>
     {% endfor %}
   </div>
-  {% for tab in ['Sunglasses', 'Eyeglasses'] %}
+  {% for group in shop_by_shapes %}
+  {% set tab = group.tab %}
   <div class="store-shape-grid" role="tabpanel" data-shape-panel="{{ tab }}"{% if tab != shape_tab %} hidden{% endif %}>
-    {% for s in shop_by_shapes %}
+    {% for s in group.shapes %}
     <a href="{{ url_for('store.home', cat=tab, shape=s['id']) }}#store-catalog"
        class="store-shape-card{{ ' active' if shape and shape['id'] == s['id'] and category == tab else '' }}">
       {{ shape_icon(s['name']) }}
@@ -355,8 +358,8 @@
   {% set f_paths = frame_galleries.get(f['id']) or ([f['image_path']] if f['image_path'] else []) %}
   <div class="store-card">
     <a href="{{ url_for('store.product_detail', item_type='frame', item_id=f['id']) }}" class="store-card-link">
-      <div class="store-card-img{{ ' has-hover-img' if f_paths|length > 1 else '' }}" data-card-gallery>
-        {{ card_images(f_paths, f['brand']) }}
+      <div class="store-card-img">
+        {{ card_images(f_paths[:1], f['brand']) }}
       </div>
       <div class="store-card-body">
         <div class="store-card-title">{{ f['brand'] }} {{ f['model'] or '' }}</div>
@@ -371,7 +374,6 @@
         </div>
       </div>
     </a>
-    {{ card_thumbs(f_paths) }}
     {# Color variant swatches for a grouped product (Product Groups admin
        feature) - deliberately OUTSIDE the <a> above since nested <a> tags
        aren't valid HTML; each swatch links straight to that color's own
@@ -410,8 +412,8 @@
   {% set c_paths = contact_galleries.get(c['id']) or ([c['image_path']] if c['image_path'] else []) %}
   <div class="store-card">
     <a href="{{ url_for('store.product_detail', item_type='contact_lens', item_id=c['id']) }}" class="store-card-link">
-      <div class="store-card-img{{ ' has-hover-img' if c_paths|length > 1 else '' }}" data-card-gallery>
-        {{ card_images(c_paths, c['brand']) }}
+      <div class="store-card-img">
+        {{ card_images(c_paths[:1], c['brand']) }}
       </div>
       <div class="store-card-body">
         <div class="store-card-title">{{ c['brand'] }}</div>
@@ -423,7 +425,6 @@
         <div class="store-card-price">{{ currency }} {{ '%.0f'|format(c['selling_price']) }}</div>
       </div>
     </a>
-    {{ card_thumbs(c_paths) }}
     <div class="store-card-actions-row">
       <form method="POST" action="{{ url_for('store.cart_add') }}" class="store-card-add-form">
         <input type="hidden" name="item_type" value="contact_lens">

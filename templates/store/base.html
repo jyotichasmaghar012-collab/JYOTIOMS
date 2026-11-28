@@ -280,4 +280,35 @@
     </div>
   </footer>
 </div>
+<script>
+/* Fill the empty space around a product photo with the photo's own
+   background colour (read from its edge pixels), so a white-background photo
+   sits on white and the box looks like one image. */
+(function () {
+  var SEL = ".store-card-img img, .store-product-img img, .store-gallery-main img, .store-quickview-main-img, .store-quickview-thumb, .store-gallery-thumb";
+  function edgeColour(img) {
+    try {
+      var n = 24, c = document.createElement("canvas"); c.width = c.height = n;
+      var x = c.getContext("2d", { willReadFrequently: true });
+      x.drawImage(img, 0, 0, n, n);
+      var d = x.getImageData(0, 0, n, n).data, pts = [[0,0],[n-1,0],[0,n-1],[n-1,n-1],[n>>1,0],[n>>1,n-1],[0,n>>1],[n-1,n>>1]];
+      var px = pts.map(function (q) { var i = (q[1] * n + q[0]) * 4; return [d[i], d[i+1], d[i+2], d[i+3]]; });
+      if (px.some(function (p) { return p[3] < 200; })) return null; /* transparent PNG: keep white */
+      var best = px[0], bestScore = Infinity;
+      px.forEach(function (a) {
+        var sc = 0; px.forEach(function (b) { sc += Math.abs(a[0]-b[0]) + Math.abs(a[1]-b[1]) + Math.abs(a[2]-b[2]); });
+        if (sc < bestScore) { bestScore = sc; best = a; }
+      });
+      return "rgb(" + best[0] + "," + best[1] + "," + best[2] + ")";
+    } catch (e) { return null; } /* other-site image the browser will not let us read */
+  }
+  function paint(img) {
+    if (!img.matches || !img.matches(SEL) || !img.complete || !img.naturalWidth) return;
+    img.style.backgroundColor = edgeColour(img) || "";
+  }
+  document.addEventListener("load", function (e) { if (e.target.tagName === "IMG") paint(e.target); }, true);
+  function all() { document.querySelectorAll(SEL).forEach(paint); }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", all); else all();
+})();
+</script>
 {% endblock %}

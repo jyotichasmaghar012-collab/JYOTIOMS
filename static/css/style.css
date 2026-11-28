@@ -490,6 +490,38 @@ a:hover { text-decoration: underline; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .form-actions { margin-top: 20px; display: flex; gap: 10px; }
 
+/* Frame form: "Fill from product link" box */
+.link-import { background: #faf8f8; border: 1px dashed var(--border); border-radius: var(--radius); padding: 4px 14px 14px; margin-bottom: 8px; }
+.link-import-row { display: flex; gap: 8px; }
+.link-import-row input[type=url] {
+  flex: 1; min-width: 0; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-family: inherit;
+}
+.link-import-paste { margin-top: 8px; }
+.link-import-paste > summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--brand-red, #d32027); }
+.link-import-paste ol { margin: 6px 0 8px 18px; padding: 0; }
+.link-import-paste kbd { font-size: 11px; padding: 1px 5px; border: 1px solid var(--border); border-radius: 4px; background: #fafafa; }
+.link-import-paste textarea { width: 100%; font-family: monospace; font-size: 12px; margin-bottom: 8px; resize: vertical; }
+.link-import-status { margin-top: 8px; font-size: 13px; color: var(--text-muted); }
+.link-import-status:empty { display: none; }
+.link-import-status.is-error { color: var(--danger); font-weight: 600; }
+.link-import-report { margin-top: 10px; font-size: 13px; line-height: 1.5; display: grid; gap: 4px; }
+.link-import-report .muted { font-size: 12.5px; }
+.link-import-ok { color: var(--success); }
+.link-import-warn { margin: 2px 0; padding-left: 18px; color: var(--warn); }
+.link-import-photos { margin-top: 12px; }
+.link-import-photos-head { font-size: 13px; margin-bottom: 8px; }
+.link-import-photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+.form-panel label.link-import-photo {
+  position: relative; display: block; margin: 0; border: 1px solid var(--border); border-radius: 8px;
+  overflow: hidden; background: #fff; aspect-ratio: 1; cursor: pointer;
+}
+.link-import-photo img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.link-import-photo input { position: absolute; top: 6px; left: 6px; width: 16px; height: 16px; margin: 0; }
+.link-import-photo:has(input:checked) { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
+.link-import-photo.is-broken { opacity: 0.35; cursor: not-allowed; }
+.link-import-filled { background: #fffbe6 !important; border-color: #e0c200 !important; }
+@media (max-width: 640px) { .link-import-row { flex-direction: column; } }
+
 /* Frame form: inline "quick add" widget beside each taxonomy dropdown
    (Brand/Colour/Size/Material/Frame Shape/Frame Type/Gender/Category) - see
    templates/inventory/frame_form.html's taxonomy_select macro. The row puts
@@ -1212,10 +1244,10 @@ a:hover { text-decoration: underline; }
 .store-card-link { color: var(--text); display: flex; flex-direction: column; flex: 1; }
 .store-card-link:hover { text-decoration: none; }
 .store-card-img {
-  aspect-ratio: 1 / 1; background: #f8f6f6; display: flex; align-items: center; justify-content: center;
-  overflow: hidden; padding: 10px; position: relative;
+  aspect-ratio: 1 / 1; background: #fff; display: flex; align-items: center; justify-content: center;
+  overflow: hidden; padding: 0; position: relative;
 }
-.store-card-img img { width: 100%; height: 100%; object-fit: contain; }
+.store-card-img img { width: 100%; height: 100%; object-fit: contain; padding: 10px; }
 /* Product Card Gallery: every image for the item is in the DOM (not just
    the featured one); when there's more than one (has-hover-img - kept as
    the marker class name for continuity) they're stacked absolutely and
@@ -1269,10 +1301,20 @@ a:hover { text-decoration: underline; }
 .store-card-swatch-dot { width: 100%; height: 100%; display: block; background: var(--panel-bg); }
 .store-card-add-form { border-top: 1px solid var(--border); }
 .store-card-add-btn {
-  width: 100%; border: none; background: var(--primary); color: #fff; font-weight: 700;
-  font-size: 13px; padding: 11px 0; cursor: pointer; transition: background 0.15s;
+  width: 100%; border: none; color: #fff; font-weight: 700; letter-spacing: 0.3px;
+  font-size: 13px; padding: 11px 0; cursor: pointer; position: relative; overflow: hidden;
+  background: linear-gradient(135deg, #ff5a4e 0%, var(--brand-red) 55%, #b3141b 100%);
+  text-shadow: 0 1px 1px rgba(0,0,0,0.15); transition: filter 0.15s, box-shadow 0.15s;
 }
-.store-card-add-btn:hover { background: var(--brand-red); }
+/* soft light sweep across the button on hover */
+.store-card-add-btn::after {
+  content: ""; position: absolute; top: 0; left: -60%; width: 40%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+  transform: skewX(-20deg); transition: left 0.45s ease;
+}
+.store-card-add-btn:hover { filter: brightness(1.06); box-shadow: inset 0 -2px 0 rgba(0,0,0,0.12); }
+.store-card-add-btn:hover::after { left: 120%; }
+.store-card-add-btn:active { filter: brightness(0.95); }
 /* Shop-grid Quick View button (task #129) - sits next to Add to Cart in a
    row, so the form loses its own top border (the row wrapper draws it
    instead) and its button no longer needs to be full-width. */
@@ -1350,6 +1392,7 @@ a:hover { text-decoration: underline; }
 
 /* ===== Storefront: Shop by Shape ===== */
 .store-shape-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.store-shape-tabs-single { grid-template-columns: 1fr; }
 .store-shape-tab {
   padding: 13px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel-bg);
   font: inherit; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
@@ -1387,15 +1430,15 @@ a:hover { text-decoration: underline; }
 
 .store-product-detail { display: grid; grid-template-columns: 1fr 1fr; gap: 34px; }
 .store-product-img {
-  background: #f8f6f6; border-radius: var(--radius); display: flex; align-items: center;
-  justify-content: center; aspect-ratio: 1/1; overflow: hidden; padding: 24px;
+  background: #fff; border-radius: var(--radius); display: flex; align-items: center;
+  justify-content: center; aspect-ratio: 1/1; overflow: hidden; padding: 0;
   border: 1px solid var(--border);
 }
-.store-product-img img { width: 100%; height: 100%; object-fit: contain; }
+.store-product-img img { width: 100%; height: 100%; object-fit: contain; padding: 24px; }
 
 .store-gallery { display: flex; flex-direction: column; gap: 12px; }
 .store-gallery-main {
-  position: relative; background: #f8f6f6; border-radius: var(--radius); overflow: hidden;
+  position: relative; background: #fff; border-radius: var(--radius); overflow: hidden;
   aspect-ratio: 1/1; border: 1px solid var(--border);
 }
 .store-gallery-main-img {
@@ -1422,7 +1465,7 @@ a:hover { text-decoration: underline; }
   display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px;
 }
 .store-gallery-thumb {
-  width: 62px; height: 62px; flex: 0 0 auto; object-fit: contain; background: #f8f6f6;
+  width: 62px; height: 62px; flex: 0 0 auto; object-fit: contain; background: #fff;
   border: 2px solid var(--border); border-radius: 8px; padding: 4px; cursor: pointer; transition: border-color 0.15s;
 }
 .store-gallery-thumb.active, .store-gallery-thumb:hover { border-color: var(--brand-red); }
@@ -1994,11 +2037,11 @@ a:hover { text-decoration: underline; }
 .store-quickview-loading { grid-column: 1 / -1; text-align: center; padding: 40px 0; color: var(--text-muted); }
 .store-quickview-gallery { display: flex; flex-direction: column; gap: 10px; }
 .store-quickview-main-img {
-  width: 100%; aspect-ratio: 1 / 1; object-fit: contain; background: #f8f6f6; border-radius: 10px; padding: 10px;
+  width: 100%; aspect-ratio: 1 / 1; object-fit: contain; background: #fff; border-radius: 10px; padding: 10px;
 }
 .store-quickview-thumbs { display: flex; gap: 8px; flex-wrap: wrap; }
 .store-quickview-thumb {
-  width: 52px; height: 52px; object-fit: contain; background: #f8f6f6; border-radius: 8px; padding: 4px;
+  width: 52px; height: 52px; object-fit: contain; background: #fff; border-radius: 8px; padding: 4px;
   border: 2px solid transparent; cursor: pointer;
 }
 .store-quickview-thumb.active { border-color: var(--brand-red); }

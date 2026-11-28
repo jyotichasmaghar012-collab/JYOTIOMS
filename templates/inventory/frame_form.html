@@ -37,6 +37,38 @@
 </div>
 <div class="panel form-panel">
 <form method="POST" enctype="multipart/form-data" data-ajax-save>
+  {# "Fill from product link": reads a brand/distributor product page and
+     fills the empty fields below. Picked photos are sent as
+     import_image_url and downloaded into the gallery on Save. #}
+  <div class="link-import" id="link-import">
+    <label for="link-import-url">Fill from product link <span class="muted">(optional)</span></label>
+    <div class="link-import-row">
+      <input type="url" id="link-import-url" data-li-url placeholder="Paste the product page link, e.g. https://brand-site.com/products/...">
+      <button type="button" class="btn btn-secondary" data-li-go>Fill from link</button>
+    </div>
+    <p class="field-hint">Only empty fields are filled - check everything before saving. Cost price, stock and branch are always yours to enter.</p>
+    {# Fallback for sites that block automated requests: the source the
+       staff member's own browser received is parsed by the same readers.
+       No name attribute, so the pasted source is never part of the form post. #}
+    <details class="link-import-paste" data-li-paste>
+      <summary>Site blocked the link? Paste page source instead</summary>
+      <ol class="field-hint">
+        <li>Open the product page in your browser.</li>
+        <li>Press <kbd>Ctrl</kbd>+<kbd>U</kbd> (page source opens).</li>
+        <li>Press <kbd>Ctrl</kbd>+<kbd>A</kbd>, then <kbd>Ctrl</kbd>+<kbd>C</kbd>.</li>
+        <li>Paste below with <kbd>Ctrl</kbd>+<kbd>V</kbd> and click <strong>Fill from page source</strong>.</li>
+      </ol>
+      <textarea data-li-html rows="4" spellcheck="false" autocomplete="off" placeholder="Paste the page source here (it starts with <!DOCTYPE html> or <html>)"></textarea>
+      <div class="link-import-row">
+        <button type="button" class="btn btn-secondary" data-li-html-go>Fill from page source</button>
+        <button type="button" class="btn btn-link" data-li-html-clear>Clear</button>
+      </div>
+    </details>
+    <div class="link-import-status" data-li-status role="status" aria-live="polite"></div>
+    <div class="link-import-report" data-li-report hidden></div>
+    <div class="link-import-photos" data-li-photos hidden></div>
+  </div>
+
   {% if branches is not none %}
   <label>Branch *</label>
   <select name="branch_id" required>
@@ -255,6 +287,223 @@
   document.querySelectorAll('.taxonomy-quick-add-cancel').forEach(function (btn) {
     btn.addEventListener('click', function () { btn.closest('.taxonomy-quick-add-inline').classList.add('hidden'); });
   });
+})();
+
+// "Fill from product link" - asks the server to read the product page, then
+// fills only the fields that are still empty and lists what it did.
+(function () {
+  var box = document.getElementById('link-import');
+  if (!box || box.getAttribute('data-ready')) return;
+  box.setAttribute('data-ready', '1');
+  var form = box.closest('form');
+  var input = box.querySelector('[data-li-url]');
+  var goBtn = box.querySelector('[data-li-go]');
+  var statusEl = box.querySelector('[data-li-status]');
+  var reportEl = box.querySelector('[data-li-report]');
+  var photosEl = box.querySelector('[data-li-photos]');
+  var MAX_PHOTOS = 8;
+
+  function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+  function norm(s) { return String(s || '').toLowerCase().replace(/\(inactive\)/g, '').replace(/[^a-z0-9]/g, ''); }
+  function isEmpty(el) { var v = String(el.value || '').trim(); return v === '' || Number(v) === 0 && /^[0.]+$/.test(v); }
+  function mark(el) {
+    el.classList.add('link-import-filled');
+    el.addEventListener('input', function () { el.classList.remove('link-import-filled'); }, { once: true });
+    el.addEventListener('change', function () { el.classList.remove('link-import-filled'); }, { once: true });
+  }
+
+  // Returns 'filled' | 'kept' | 'none'
+  function fillText(name, value) {
+    var el = form.elements[name];
+    if (!el || value === null || value === undefined || value === '') return 'none';
+    if (!isEmpty(el)) return 'kept';
+    el.value = value; mark(el);
+    return 'filled';
+  }
+
+  // Returns 'filled' | 'kept' | 'missing' | 'none'
+  function fillSelect(name, value) {
+    var el = form.elements[name];
+    if (!el || !value) return 'none';
+    if (el.value) return 'kept';
+    var want = norm(value); var hit = null; var loose = null;
+    for (var i = 1; i < el.options.length; i++) {
+      var n = norm(el.options[i].textContent);
+      if (n === want) { hit = el.options[i]; break; }
+      if (!loose && n.length >= 4 && want.length >= 4 && (n.indexOf(want) === 0 || want.indexOf(n) === 0)) loose = el.options[i];
+    }
+    hit = hit || loose;
+    if (hit) { el.value = hit.value; mark(el); return 'filled'; }
+    // Not in the list yet: open this dropdown's "+ Add" box with the name typed in.
+    var row = el.closest('.taxonomy-select-row');
+    var inline = row && row.nextElementSibling;
+    if (inline && inline.classList.contains('taxonomy-quick-add-inline')) {
+      inline.classList.remove('hidden');
+      inline.querySelector('.taxonomy-quick-add-input').value = value;
+      inline.querySelector('.taxonomy-quick-add-error').textContent = 'Not in the list yet - click Add to create it.';
+    }
+    return 'missing';
+  }
+
+  function renderPhotos(urls) {
+    photosEl.innerHTML = '';
+    if (!urls || !urls.length) { photosEl.hidden = true; return; }
+    var head = document.createElement('div');
+    head.className = 'link-import-photos-head';
+    head.innerHTML = '<strong>Photos from the link</strong> <span class="muted">- ticked photos (max ' + MAX_PHOTOS + ') are added to the gallery when you click Save.</span>';
+    photosEl.appendChild(head);
+    var grid = document.createElement('div');
+    grid.className = 'link-import-photo-grid';
+    urls.forEach(function (u, i) {
+      var label = document.createElement('label');
+      label.className = 'link-import-photo';
+      label.innerHTML = '<input type="checkbox" name="import_image_url">' +
+        '<img alt="" loading="lazy" referrerpolicy="no-referrer">';
+      var cb = label.querySelector('input'); cb.value = u; cb.checked = i < 6;
+      var img = label.querySelector('img'); img.src = u;
+      img.addEventListener('error', function () { cb.checked = false; cb.disabled = true; label.classList.add('is-broken'); });
+      cb.addEventListener('change', function () {
+        if (cb.checked && grid.querySelectorAll('input:checked').length > MAX_PHOTOS) {
+          cb.checked = false;
+          statusEl.textContent = 'You can pick up to ' + MAX_PHOTOS + ' photos at a time.';
+        }
+      });
+      grid.appendChild(label);
+    });
+    photosEl.appendChild(grid);
+    photosEl.hidden = false;
+  }
+
+  function apply(p) {
+    var filled = []; var kept = []; var needs = [];
+    function note(label, result, value) {
+      if (result === 'filled') filled.push(label + (value ? ' (' + value + ')' : ''));
+      else if (result === 'kept') kept.push(label);
+      else if (result === 'missing') needs.push(label + ' "' + value + '" is not in the list yet - click Add next to it, or pick another.');
+    }
+    note('Brand', fillSelect('brand_id', p.brand), p.brand);
+    note('Frame ID (model)', fillText('model', p.model), p.model);
+    note('Model Name', fillText('model_name', p.model_name), p.model_name);
+    note('SKU', fillText('sku', p.sku), p.sku);
+    note('Barcode', fillText('barcode', p.barcode), p.barcode);
+    note('Colour', fillSelect('colour_id', p.colour), p.colour);
+    note('Size', fillSelect('size_id', p.size), p.size);
+    note('Material', fillSelect('material_id', p.material), p.material);
+    note('Frame Shape', fillSelect('frame_shape_id', p.frame_shape), p.frame_shape);
+    note('Frame Type', fillSelect('frame_type_id', p.frame_type), p.frame_type);
+    note('Gender', fillSelect('gender_id', p.gender), p.gender);
+    note('Category', fillSelect('category_id', p.category), p.category);
+    if (p.price && p.price_is_inr) note('Selling Price', fillText('selling_price', p.price), p.price);
+    else if (p.price) needs.push('Price on the site is ' + (p.currency || '(currency not shown)') + ' ' + p.price + ' - not copied, enter your rupee price.');
+    note('Online Description', fillText('online_description', p.description), null);
+    note('Meta Title', fillText('meta_title', p.meta_title), null);
+    note('Meta Description', fillText('meta_description', p.meta_description), null);
+    note('URL Slug', fillText('slug', p.slug), null);
+
+    var missingInfo = [];
+    if (!p.frame_shape) missingInfo.push('Frame Shape');
+    if (!p.gender) missingInfo.push('Gender');
+    if (!p.category) missingInfo.push('Category');
+    if (!p.colour) missingInfo.push('Colour');
+
+    var html = '<div><strong>Read:</strong> ' + esc(p.title) + '</div>';
+    if (filled.length) html += '<div class="link-import-ok"><strong>Filled:</strong> ' + esc(filled.join(', ')) + '</div>';
+    if (kept.length) html += '<div class="muted"><strong>Left as you typed:</strong> ' + esc(kept.join(', ')) + '</div>';
+    if (needs.length) html += '<ul class="link-import-warn">' + needs.map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('') + '</ul>';
+    if (missingInfo.length) html += '<div class="muted"><strong>Not found on the page, please choose:</strong> ' + esc(missingInfo.join(', ')) + '</div>';
+    html += '<div class="muted"><strong>Always fill yourself:</strong> Cost Price, Stock Quantity' + (form.elements.branch_id ? ', Branch' : '') + '.</div>';
+    reportEl.innerHTML = html;
+    reportEl.hidden = false;
+    renderPhotos(p.images);
+  }
+
+  function run() {
+    var url = input.value.trim();
+    if (!url) { statusEl.textContent = 'Paste a product link first.'; input.focus(); return; }
+    goBtn.disabled = true;
+    statusEl.className = 'link-import-status';
+    statusEl.textContent = 'Reading the product page...';
+    fetch('/inventory/frames/import-link?url=' + encodeURIComponent(url), {
+      headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' }, credentials: 'same-origin',
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        goBtn.disabled = false;
+        if (!data.ok) {
+          statusEl.className = 'link-import-status is-error';
+          statusEl.textContent = 'Could not read this link: ' + (data.error || 'unknown error') + ' Try "Paste page source" below, or fill the details by hand.';
+          if (pasteBox) pasteBox.open = true;
+          return;
+        }
+        statusEl.textContent = 'Done - check the highlighted fields before saving.';
+        apply(data.product);
+      })
+      .catch(function () {
+        goBtn.disabled = false;
+        statusEl.className = 'link-import-status is-error';
+        statusEl.textContent = 'Network error - check your internet and try again, or fill the details by hand.';
+      });
+  }
+
+  goBtn.addEventListener('click', run);
+  input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); run(); } });
+
+  /* ----- "Paste page source" fallback ----- */
+  var pasteBox = box.querySelector('[data-li-paste]');
+  var htmlArea = box.querySelector('[data-li-html]');
+  var htmlGo = box.querySelector('[data-li-html-go]');
+  var htmlClear = box.querySelector('[data-li-html-clear]');
+
+  // Drop the parts no reader uses (CSS, SVG icons, comments, external script
+  // tags, class/style attributes) so a 3 MB page uploads as a few hundred KB.
+  function slimSource(src) {
+    return src
+      /* \x3c instead of a literal "<" keeps the browser's HTML parser from
+         treating these patterns as a comment / script tag inside this <script>. */
+      .replace(/\x3c!--[\s\S]*?--\x3e/g, '')
+      .replace(/\x3cstyle[\s\S]*?\x3c\/style>/gi, '')
+      .replace(/\x3csvg[\s\S]*?\x3c\/svg>/gi, '')
+      .replace(/\x3cscript\b[^>]*\bsrc=[^>]*>\s*\x3c\/script>/gi, '')
+      .replace(/<link\b(?![^>]*rel=["']?canonical)[^>]*>/gi, '')
+      .replace(/\s(?:style|class)="[^"]*"/gi, '')
+      .replace(/\s{2,}/g, ' ');
+  }
+
+  function runHtml() {
+    var src = htmlArea.value;
+    if (!src.trim()) { statusEl.className = 'link-import-status is-error'; statusEl.textContent = 'Paste the page source first.'; htmlArea.focus(); return; }
+    var slim = slimSource(src);
+    if (slim.length > 3.5 * 1024 * 1024) { /* hosting caps request bodies at ~4.5 MB */ statusEl.className = 'link-import-status is-error'; statusEl.textContent = 'This page source is too large to read. Please fill the details by hand.'; return; }
+    htmlGo.disabled = true;
+    statusEl.className = 'link-import-status';
+    statusEl.textContent = 'Reading the pasted page source...';
+    fetch('/inventory/frames/import-html', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' },
+      body: JSON.stringify({ html: slim, url: input.value.trim() }),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        htmlGo.disabled = false;
+        if (!data.ok) {
+          statusEl.className = 'link-import-status is-error';
+          statusEl.textContent = 'Could not read this page source: ' + (data.error || 'unknown error') + ' Please fill the details by hand.';
+          return;
+        }
+        statusEl.textContent = 'Done - check the highlighted fields before saving.';
+        if (data.product.source_url && !input.value.trim()) input.value = data.product.source_url;
+        apply(data.product);
+        htmlArea.value = ''; // don't keep megabytes of text in the form
+        pasteBox.open = false;
+      })
+      .catch(function () {
+        htmlGo.disabled = false;
+        statusEl.className = 'link-import-status is-error';
+        statusEl.textContent = 'Network error - check your internet and try again, or fill the details by hand.';
+      });
+  }
+  if (htmlGo) htmlGo.addEventListener('click', runHtml);
+  if (htmlClear) htmlClear.addEventListener('click', function () { htmlArea.value = ''; htmlArea.focus(); });
 })();
 </script>
 {% endblock %}

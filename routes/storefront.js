@@ -339,9 +339,22 @@ function genderFragments(gender) {
   };
 }
 
-/** Active frame shapes for the homepage "Shop by Shape" grid, in the order
- *  they were added (Inventory > Frame Shapes). */
-const _active_frame_shapes = (db) => db.execute('SELECT id, name FROM frame_shapes WHERE is_active=1 ORDER BY id').fetchall();
+const SHAPE_TABS = ['Sunglasses', 'Eyeglasses'];
+
+/** Homepage "Shop by Shape" grid: per tab (Sunglasses / Eyeglasses), only the
+ *  active shapes that have at least one frame actually available online in
+ *  that category (visible, active, in stock - same rules as the catalog).
+ *  Returns [{tab, shapes: [{id, name}]}] with empty tabs left out. */
+function _shop_by_shapes(db) {
+  const rows = db.execute(`SELECT s.id, s.name, f.category
+             FROM frame_shapes s JOIN frames f ON f.frame_shape_id = s.id
+             WHERE s.is_active=1 AND f.online_visible=1 AND f.is_active=1 AND f.stock_qty > 0
+               AND f.category IN (${SHAPE_TABS.map(() => '?').join(',')})
+             GROUP BY s.id, f.category ORDER BY s.id`, SHAPE_TABS).fetchall();
+  return SHAPE_TABS
+    .map((tab) => ({ tab, shapes: rows.filter((r) => r.category === tab).map((r) => ({ id: r.id, name: r.name })) }))
+    .filter((t) => t.shapes.length);
+}
 
 /** ?shape=<id> -> that active frame shape row, or null. */
 function _selected_shape(db, raw) {
@@ -919,7 +932,7 @@ bp.route('/', function home() {
     featured_products: _flagged_products(db, 'is_featured'),
     showcase_brands: _active_brands_with_logo(db),
     showcase_categories: _active_categories_with_image(db),
-    shop_by_shapes: _active_frame_shapes(db),
+    shop_by_shapes: _shop_by_shapes(db),
     active_promotions: _active_promotions(db),
     active_trust_items: _active_trust_items(db),
     active_store_services: _active_store_services(db),
